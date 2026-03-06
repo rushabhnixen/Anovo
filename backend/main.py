@@ -2,14 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import grammar, humanize, paraphrase, summarize, translate
+from routers import (
+    chat, cowriter, grammar, humanize,
+    paraphrase, plagiarism, summarize, tone, translate,
+)
 
 app = FastAPI(
     title="Anovo API",
     description=(
         "AI-Powered Writing Tool API — Free & Open Source\n\n"
         "Endpoints for paraphrasing, grammar checking, summarization, "
-        "translation, and AI text humanization."
+        "translation, AI text humanization, plagiarism detection, "
+        "tone analysis, co-writing, and AI chat."
     ),
     version="1.0.0",
     docs_url="/docs",
@@ -31,6 +35,10 @@ app.include_router(grammar.router)
 app.include_router(summarize.router)
 app.include_router(translate.router)
 app.include_router(humanize.router)
+app.include_router(plagiarism.router)
+app.include_router(tone.router)
+app.include_router(cowriter.router)
+app.include_router(chat.router)
 
 
 @app.get("/", tags=["health"])

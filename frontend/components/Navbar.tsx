@@ -10,6 +10,10 @@ const navLinks = [
   { label: "Summarizer", href: "/summarize" },
   { label: "Translator", href: "/translate" },
   { label: "Humanizer", href: "/humanize" },
+  { label: "Plagiarism", href: "/plagiarism" },
+  { label: "Tone", href: "/tone" },
+  { label: "Co-Writer", href: "/cowriter" },
+  { label: "Chat", href: "/chat" },
   { label: "API Docs", href: "/api-docs" },
 ];
 

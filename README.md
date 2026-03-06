@@ -21,13 +21,13 @@
 | 7 | **Developer API** — Auto-generated OpenAPI/Swagger docs | ✅ |
 | 8 | **AI Text Humanizer** — Multi-step pipeline to humanize AI text | ✅ |
 
-### Phase 2 (Upcoming)
+### Phase 2 (Current)
 | # | Feature | Status |
 |---|---------|--------|
-| 9 | **AI Chat Modes** — Llama 3 / Mistral 7B via Ollama | 🔜 |
-| 10 | **Plagiarism Checker** — Semantic similarity detection | 🔜 |
-| 11 | **Tone Detector** — Formal / casual / persuasive classification | 🔜 |
-| 12 | **Co-Writer** — AI autocomplete suggestions | 🔜 |
+| 9 | **AI Chat Modes** — Llama 3 / Mistral 7B via Ollama | ✅ |
+| 10 | **Plagiarism Checker** — Semantic similarity detection | ✅ |
+| 11 | **Tone Detector** — Formal / casual / persuasive classification | ✅ |
+| 12 | **Co-Writer** — AI autocomplete suggestions | ✅ |
 
 ---
 
@@ -73,6 +73,11 @@ PARAPHRASE_MODEL=Vamsi/T5_Paraphrase_Paws
 SUMMARIZE_MODEL=facebook/bart-large-cnn
 TRANSLATE_EN_FR_MODEL=Helsinki-NLP/opus-mt-en-fr
 TRANSLATE_FR_EN_MODEL=Helsinki-NLP/opus-mt-fr-en
+PLAGIARISM_MODEL=sentence-transformers/all-MiniLM-L6-v2
+TONE_MODEL=facebook/bart-large-mnli
+COWRITER_MODEL=distilgpt2
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama3
 ```
 
 Start the backend:
@@ -124,6 +129,10 @@ Once the backend is running, visit:
 | POST | `/api/summarize` | Summarize text (paragraph or bullet mode) |
 | POST | `/api/translate` | Translate between 100+ languages |
 | POST | `/api/humanize` | Humanize AI-generated text |
+| POST | `/api/plagiarism-check` | Check for plagiarism via semantic similarity |
+| POST | `/api/tone-detect` | Detect text tone (formal, casual, etc.) |
+| POST | `/api/co-write` | Generate AI autocomplete suggestions |
+| POST | `/api/chat` | AI chat with multiple modes |
 
 ---
 
@@ -143,13 +152,21 @@ Anovo/
 │   │   ├── grammar.py
 │   │   ├── summarize.py
 │   │   ├── translate.py
-│   │   └── humanize.py
+│   │   ├── humanize.py
+│   │   ├── plagiarism.py
+│   │   ├── tone.py
+│   │   ├── cowriter.py
+│   │   └── chat.py
 │   ├── services/
 │   │   ├── paraphrase_service.py
 │   │   ├── grammar_service.py
 │   │   ├── summarize_service.py
 │   │   ├── translate_service.py
-│   │   └── humanize_service.py
+│   │   ├── humanize_service.py
+│   │   ├── plagiarism_service.py
+│   │   ├── tone_service.py
+│   │   ├── cowriter_service.py
+│   │   └── chat_service.py
 │   └── models/
 │       └── schemas.py
 └── frontend/
@@ -165,6 +182,10 @@ Anovo/
     │   ├── summarize/page.tsx
     │   ├── translate/page.tsx
     │   ├── humanize/page.tsx
+    │   ├── plagiarism/page.tsx
+    │   ├── tone/page.tsx
+    │   ├── cowriter/page.tsx
+    │   ├── chat/page.tsx
     │   └── api-docs/page.tsx
     ├── components/
     │   ├── Navbar.tsx

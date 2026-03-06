@@ -76,3 +76,66 @@ class HumanizeResponse(BaseModel):
     original: str
     humanized: str
     steps: Optional[dict] = None
+
+
+# ── Plagiarism Checker ───────────────────────────────────────────────────────
+
+class PlagiarismRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to check")
+    reference_text: str = Field(..., min_length=1, max_length=5000, description="Reference text to compare against")
+
+
+class PlagiarismResponse(BaseModel):
+    text: str
+    reference_text: str
+    similarity_score: float = Field(description="Cosine similarity between 0 and 1")
+    is_plagiarized: bool = Field(description="True if similarity exceeds threshold")
+    threshold: float
+
+
+# ── Tone Detector ────────────────────────────────────────────────────────────
+
+class ToneScore(BaseModel):
+    label: str
+    score: float
+
+
+class ToneRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=5000, description="Text to analyze")
+
+
+class ToneResponse(BaseModel):
+    text: str
+    tones: list[ToneScore]
+    primary_tone: str
+
+
+# ── Co-Writer ────────────────────────────────────────────────────────────────
+
+class CoWriterRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=2000, description="Text prompt for autocomplete")
+    max_tokens: int = Field(50, ge=10, le=200, description="Maximum tokens to generate")
+    num_suggestions: int = Field(3, ge=1, le=5, description="Number of suggestions to return")
+
+
+class CoWriterResponse(BaseModel):
+    prompt: str
+    suggestions: list[str]
+
+
+# ── AI Chat ──────────────────────────────────────────────────────────────────
+
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="'user' or 'assistant'")
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=2000, description="User message")
+    mode: str = Field("general", description="Chat mode: 'general', 'creative', or 'academic'")
+    history: list[ChatMessage] = Field(default_factory=list, description="Conversation history")
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    mode: str
