@@ -28,7 +28,9 @@ export default function CoWriterPage() {
   };
 
   const handleUseSuggestion = (suggestion: string) => {
-    setInputText(inputText + " " + suggestion);
+    const trimmed = inputText.trimEnd();
+    const separator = trimmed.length > 0 ? " " : "";
+    setInputText(trimmed + separator + suggestion);
     setSuggestions([]);
   };
 
