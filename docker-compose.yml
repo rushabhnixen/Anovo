@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  languagetool:
+    image: erikvl87/languagetool:latest
+    container_name: anovo_languagetool
+    ports:
+      - "8010:8010"
+    environment:
+      - Java_Xms=512m
+      - Java_Xmx=1g
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: anovo_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - LANGUAGETOOL_URL=http://languagetool:8010
+      - PARAPHRASE_MODEL=Vamsi/T5_Paraphrase_Paws
+      - SUMMARIZE_MODEL=facebook/bart-large-cnn
+      - TRANSLATE_EN_FR_MODEL=Helsinki-NLP/opus-mt-en-fr
+      - TRANSLATE_FR_EN_MODEL=Helsinki-NLP/opus-mt-fr-en
+    depends_on:
+      - languagetool
+    volumes:
+      - ./backend:/app
+      - model_cache:/root/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  model_cache:
