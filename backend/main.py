@@ -1,11 +1,22 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
+from database import create_tables
 from routers import (
     chat, cowriter, grammar, humanize,
     paraphrase, plagiarism, summarize, tone, translate,
 )
+from routers import auth, history
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    create_tables()
+    yield
+
 
 app = FastAPI(
     title="Anovo API",
@@ -13,11 +24,12 @@ app = FastAPI(
         "AI-Powered Writing Tool API — Free & Open Source\n\n"
         "Endpoints for paraphrasing, grammar checking, summarization, "
         "translation, AI text humanization, plagiarism detection, "
-        "tone analysis, co-writing, and AI chat."
+        "tone analysis, co-writing, AI chat, user accounts, and history."
     ),
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
@@ -39,6 +51,8 @@ app.include_router(plagiarism.router)
 app.include_router(tone.router)
 app.include_router(cowriter.router)
 app.include_router(chat.router)
+app.include_router(auth.router)
+app.include_router(history.router)
 
 
 @app.get("/", tags=["health"])

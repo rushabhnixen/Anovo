@@ -128,3 +128,76 @@ export const coWrite = (text: string, max_tokens: number, num_suggestions: numbe
 
 export const chatWithAI = (message: string, mode: string, history: ChatMessage[]) =>
   post<ChatResponse>("/api/chat", { message, mode, history });
+
+// ── Auth & History Types ──────────────────────────────────────────────────────
+
+export interface TokenResponse {
+  access_token: string;
+  token_type: string;
+}
+
+export interface UserResponse {
+  id: number;
+  username: string;
+  email: string;
+}
+
+export interface HistoryEntry {
+  id: number;
+  tool: string;
+  input_text: string;
+  output_text: string;
+  created_at: string;
+}
+
+// ── Auth API calls ────────────────────────────────────────────────────────────
+
+export const registerUser = (username: string, email: string, password: string) =>
+  post<TokenResponse>("/api/auth/register", { username, email, password });
+
+export const loginUser = (email: string, password: string) =>
+  post<TokenResponse>("/api/auth/login", { email, password });
+
+export const getCurrentUser = (token: string) =>
+  fetch(`${API_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(async (res) => {
+    if (!res.ok) throw new Error("Not authenticated");
+    return res.json() as Promise<UserResponse>;
+  });
+
+// ── History API calls ─────────────────────────────────────────────────────────
+
+export const getHistory = (token: string, limit = 50): Promise<HistoryEntry[]> =>
+  fetch(`${API_URL}/api/history?limit=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(async (res) => {
+    if (!res.ok) throw new Error("Failed to fetch history");
+    return res.json() as Promise<HistoryEntry[]>;
+  });
+
+export const saveHistory = (
+  token: string,
+  tool: string,
+  input_text: string,
+  output_text: string,
+): Promise<HistoryEntry> =>
+  fetch(`${API_URL}/api/history`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ tool, input_text, output_text }),
+  }).then(async (res) => {
+    if (!res.ok) throw new Error("Failed to save history");
+    return res.json() as Promise<HistoryEntry>;
+  });
+
+export const deleteHistoryEntry = (token: string, id: number): Promise<void> =>
+  fetch(`${API_URL}/api/history/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  }).then(async (res) => {
+    if (!res.ok) throw new Error("Failed to delete history entry");
+  });

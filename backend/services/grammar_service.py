@@ -1,5 +1,8 @@
 """
 Grammar checking service using LanguageTool REST API.
+
+Defaults to the free public languagetool.org API.
+Override LANGUAGETOOL_URL to point to a self-hosted instance.
 """
 from __future__ import annotations
 
@@ -19,8 +22,7 @@ def check_grammar(text: str, language: str = "en-US") -> list[GrammarError]:
         response.raise_for_status()
     except httpx.ConnectError:
         raise RuntimeError(
-            "Cannot connect to LanguageTool. "
-            "Make sure it is running at: " + settings.languagetool_url
+            "Cannot connect to LanguageTool at: " + settings.languagetool_url
         )
 
     data = response.json()

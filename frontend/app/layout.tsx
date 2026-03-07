@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
   title: "Anovo — AI-Powered Writing Tool",
@@ -14,10 +15,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="font-sans bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
-        <Navbar />
-        <main className="container mx-auto px-4 py-8">{children}</main>
+        <AuthProvider>
+          <Navbar />
+          <main className="container mx-auto px-4 py-8">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

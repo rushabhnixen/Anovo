@@ -139,3 +139,47 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     mode: str
+
+
+# ── Auth ─────────────────────────────────────────────────────────────────────
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64, description="Unique username")
+    email: str = Field(..., description="User email address")
+    password: str = Field(..., min_length=8, description="Password (min 8 characters)")
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: str
+
+    model_config = {"from_attributes": True}
+
+
+# ── History ───────────────────────────────────────────────────────────────────
+
+class SaveHistoryRequest(BaseModel):
+    tool: str = Field(..., description="Tool name (e.g. 'paraphrase', 'summarize')")
+    input_text: str = Field(..., min_length=1)
+    output_text: str = Field(..., min_length=1)
+
+
+class HistoryEntryResponse(BaseModel):
+    id: int
+    tool: str
+    input_text: str
+    output_text: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
