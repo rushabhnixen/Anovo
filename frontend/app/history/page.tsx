@@ -55,7 +55,7 @@ export default function HistoryPage() {
       <div className="max-w-md mx-auto text-center py-16">
         <h2 className="text-lg font-semibold mb-2">Sign in to view your history</h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-          Your saved tool results will appear here once you're signed in.
+          Your saved tool results will appear here once you&apos;re signed in.
         </p>
         <div className="flex justify-center gap-3">
           <Link

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.db_models import HistoryEntry
 from models.schemas import HistoryEntryResponse, SaveHistoryRequest
-from services.auth_service import decode_token, get_user_by_id
+from services.auth_service import decode_token
 
 router = APIRouter(prefix="/api/history", tags=["history"])
 bearer = HTTPBearer(auto_error=False)

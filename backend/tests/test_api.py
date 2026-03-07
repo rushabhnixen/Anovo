@@ -32,7 +32,7 @@ class TestHealth:
 class TestParaphrase:
     def test_paraphrase_success(self):
         with patch("routers.paraphrase._paraphrase", return_value="A quick fox leapt over a lazy dog."):
-            response = client.post("/api/paraphrase", json={"text": "The quick brown fox jumps over the lazy dog.", "intensity": 3})
+            response = client.post("/api/paraphrase", json={"text": "The quick brown fox jumps over the lazy dog.", "intensity": 3})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["original"] == "The quick brown fox jumps over the lazy dog."
@@ -142,7 +142,7 @@ class TestSummarize:
 class TestTranslate:
     def test_translate_success(self):
         with patch("routers.translate._translate", return_value="Bonjour le monde"):
-            response = client.post("/api/translate", json={"text": "Hello world", "source_language": "en", "target_language": "fr"})
+            response = client.post("/api/translate", json={"text": "Hello world", "source_language": "en", "target_language": "fr"})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["translated"] == "Bonjour le monde"
@@ -155,7 +155,7 @@ class TestTranslate:
 
     def test_translate_service_error(self):
         with patch("routers.translate._translate", side_effect=Exception("model not found")):
-            response = client.post("/api/translate", json={"text": "Hello", "source_language": "en", "target_language": "xx"})
+            response = client.post("/api/translate", json={"text": "Hello", "source_language": "en", "target_language": "xx"})  # noqa: E501
         assert response.status_code == 500
 
 
@@ -165,7 +165,7 @@ class TestHumanize:
     def test_humanize_success(self):
         mock_result = {"humanized": "Humanized text here.", "steps": {}}
         with patch("routers.humanize._humanize", return_value=mock_result):
-            response = client.post("/api/humanize", json={"text": "The utilization of artificial intelligence is widespread."})
+            response = client.post("/api/humanize", json={"text": "The utilization of artificial intelligence is widespread."})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["humanized"] == "Humanized text here."
@@ -186,7 +186,7 @@ class TestPlagiarism:
     def test_plagiarism_detected(self):
         result = {"similarity_score": 0.95, "is_plagiarized": True, "threshold": 0.8}
         with patch("routers.plagiarism.check_plagiarism", return_value=result):
-            response = client.post("/api/plagiarism-check", json={"text": "This is the copied text.", "reference_text": "This is the copied text."})
+            response = client.post("/api/plagiarism-check", json={"text": "This is the copied text.", "reference_text": "This is the copied text."})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["is_plagiarized"] is True
@@ -195,7 +195,7 @@ class TestPlagiarism:
     def test_plagiarism_not_detected(self):
         result = {"similarity_score": 0.2, "is_plagiarized": False, "threshold": 0.8}
         with patch("routers.plagiarism.check_plagiarism", return_value=result):
-            response = client.post("/api/plagiarism-check", json={"text": "The sky is blue.", "reference_text": "Python is a programming language."})
+            response = client.post("/api/plagiarism-check", json={"text": "The sky is blue.", "reference_text": "Python is a programming language."})  # noqa: E501
         assert response.status_code == 200
         assert response.json()["is_plagiarized"] is False
 
@@ -219,7 +219,7 @@ class TestTone:
 
     def test_tone_detect_success(self):
         with patch("routers.tone.detect_tone", return_value=self._tone_result):
-            response = client.post("/api/tone-detect", json={"text": "We must address this critical issue immediately."})
+            response = client.post("/api/tone-detect", json={"text": "We must address this critical issue immediately."})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["primary_tone"] == "formal"
@@ -241,7 +241,7 @@ class TestCoWriter:
     def test_cowrite_success(self):
         suggestions = [" is a rapidly growing field.", " continues to evolve rapidly.", " shapes the modern economy."]
         with patch("routers.cowriter.generate_suggestions", return_value=suggestions):
-            response = client.post("/api/co-write", json={"text": "Artificial intelligence", "max_tokens": 50, "num_suggestions": 3})
+            response = client.post("/api/co-write", json={"text": "Artificial intelligence", "max_tokens": 50, "num_suggestions": 3})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert len(data["suggestions"]) == 3
@@ -257,7 +257,7 @@ class TestCoWriter:
 
     def test_cowrite_service_error(self):
         with patch("routers.cowriter.generate_suggestions", side_effect=Exception("generation failed")):
-            response = client.post("/api/co-write", json={"text": "The future of", "max_tokens": 50, "num_suggestions": 2})
+            response = client.post("/api/co-write", json={"text": "The future of", "max_tokens": 50, "num_suggestions": 2})  # noqa: E501
         assert response.status_code == 500
 
 
@@ -275,7 +275,7 @@ class TestChat:
     def test_chat_with_history(self):
         history = [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello!"}]
         with patch("routers.chat.chat", return_value="Sure, happy to help!"):
-            response = client.post("/api/chat", json={"message": "Can you help me?", "mode": "academic", "history": history})
+            response = client.post("/api/chat", json={"message": "Can you help me?", "mode": "academic", "history": history})  # noqa: E501
         assert response.status_code == 200
 
     def test_chat_empty_message(self):
