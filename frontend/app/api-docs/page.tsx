@@ -35,6 +35,33 @@ const endpoints = [
     description: "Humanize AI-generated text",
     body: { text: "The utilization of artificial intelligence…" },
   },
+  {
+    method: "POST",
+    path: "/api/plagiarism-check",
+    description: "Check for plagiarism using semantic similarity",
+    body: {
+      text: "This is the text to check.",
+      reference_text: "This is the original source text.",
+    },
+  },
+  {
+    method: "POST",
+    path: "/api/tone-detect",
+    description: "Detect the tone of text (formal, casual, persuasive, etc.)",
+    body: { text: "We need to act now before it is too late." },
+  },
+  {
+    method: "POST",
+    path: "/api/co-write",
+    description: "Generate AI autocomplete suggestions",
+    body: { text: "The future of technology", max_tokens: 50, num_suggestions: 3 },
+  },
+  {
+    method: "POST",
+    path: "/api/chat",
+    description: "AI chat with multiple modes (general, creative, academic)",
+    body: { message: "Explain quantum computing simply.", mode: "general", history: [] },
+  },
 ];
 
 export default function ApiDocsPage() {

@@ -11,6 +11,15 @@ services:
       - Java_Xmx=1g
     restart: unless-stopped
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: anovo_ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -24,8 +33,14 @@ services:
       - SUMMARIZE_MODEL=facebook/bart-large-cnn
       - TRANSLATE_EN_FR_MODEL=Helsinki-NLP/opus-mt-en-fr
       - TRANSLATE_FR_EN_MODEL=Helsinki-NLP/opus-mt-fr-en
+      - PLAGIARISM_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - TONE_MODEL=facebook/bart-large-mnli
+      - COWRITER_MODEL=distilgpt2
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3
     depends_on:
       - languagetool
+      - ollama
     volumes:
       - ./backend:/app
       - model_cache:/root/.cache/huggingface
@@ -33,3 +48,4 @@ services:
 
 volumes:
   model_cache:
+  ollama_data:

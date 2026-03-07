@@ -78,3 +78,53 @@ export const translateText = (
 
 export const humanizeText = (text: string) =>
   post<HumanizeResponse>("/api/humanize", { text });
+
+// ── Phase 2 Types ────────────────────────────────────────────────────────────
+
+export interface PlagiarismResponse {
+  text: string;
+  reference_text: string;
+  similarity_score: number;
+  is_plagiarized: boolean;
+  threshold: number;
+}
+
+export interface ToneScore {
+  label: string;
+  score: number;
+}
+
+export interface ToneResponse {
+  text: string;
+  tones: ToneScore[];
+  primary_tone: string;
+}
+
+export interface CoWriterResponse {
+  prompt: string;
+  suggestions: string[];
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatResponse {
+  reply: string;
+  mode: string;
+}
+
+// ── Phase 2 API calls ────────────────────────────────────────────────────────
+
+export const checkPlagiarism = (text: string, reference_text: string) =>
+  post<PlagiarismResponse>("/api/plagiarism-check", { text, reference_text });
+
+export const detectTone = (text: string) =>
+  post<ToneResponse>("/api/tone-detect", { text });
+
+export const coWrite = (text: string, max_tokens: number, num_suggestions: number) =>
+  post<CoWriterResponse>("/api/co-write", { text, max_tokens, num_suggestions });
+
+export const chatWithAI = (message: string, mode: string, history: ChatMessage[]) =>
+  post<ChatResponse>("/api/chat", { message, mode, history });
