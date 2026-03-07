@@ -22,11 +22,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3"
 
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "https://*.vercel.app",
-        "https://*.hf.space",
-    ]
+    cors_origins: list[str] = ["http://localhost:3000"]
 
     # Auth & DB
     database_url: str = "sqlite:///./anovo.db"
