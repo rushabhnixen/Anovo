@@ -1,138 +1,83 @@
 """
 AI Text Humanizer service.
 
-Pipeline:
-  1. Paraphrase (T5)
-  2. Back-translation  EN → FR → EN
-  3. Burstiness modulation (vary sentence lengths)
-  4. Human heuristics injection (contractions, discourse markers)
+Uses Groq LLM for high-quality humanization when available.
+Falls back to a multi-step local pipeline (paraphrase + back-translate +
+burstiness + heuristics) otherwise.
 """
 from __future__ import annotations
 
-import random
-import re
-
-from services.paraphrase_service import paraphrase
-from services.translate_service import translate
-
-# ── Contraction map ──────────────────────────────────────────────────────────
-CONTRACTIONS: dict[str, str] = {
-    "do not": "don't",
-    "does not": "doesn't",
-    "did not": "didn't",
-    "is not": "isn't",
-    "are not": "aren't",
-    "was not": "wasn't",
-    "were not": "weren't",
-    "will not": "won't",
-    "would not": "wouldn't",
-    "could not": "couldn't",
-    "should not": "shouldn't",
-    "cannot": "can't",
-    "have not": "haven't",
-    "has not": "hasn't",
-    "had not": "hadn't",
-    "I am": "I'm",
-    "you are": "you're",
-    "he is": "he's",
-    "she is": "she's",
-    "it is": "it's",
-    "we are": "we're",
-    "they are": "they're",
-    "I have": "I've",
-    "you have": "you've",
-    "we have": "we've",
-    "they have": "they've",
-    "I will": "I'll",
-    "you will": "you'll",
-    "he will": "he'll",
-    "she will": "she'll",
-    "we will": "we'll",
-    "they will": "they'll",
-    "I would": "I'd",
-    "that is": "that's",
-    "there is": "there's",
-    "what is": "what's",
-    "here is": "here's",
-}
-
-DISCOURSE_MARKERS = [
-    "Honestly, ",
-    "Basically, ",
-    "To be fair, ",
-    "Look, ",
-    "You know, ",
-    "I mean, ",
-    "Actually, ",
-    "Frankly, ",
-]
-
-
-def _apply_contractions(text: str) -> str:
-    for formal, contraction in CONTRACTIONS.items():
-        text = re.sub(r"\b" + re.escape(formal) + r"\b", contraction, text, flags=re.IGNORECASE)
-    return text
-
-
-def _modulate_burstiness(text: str) -> str:
-    """Randomly split long sentences and merge short consecutive ones."""
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-    result: list[str] = []
-    i = 0
-    while i < len(sentences):
-        s = sentences[i]
-        words = s.split()
-        # Split long sentences (>25 words) at a comma if possible
-        if len(words) > 25 and "," in s:
-            parts = s.split(",", 1)
-            result.append(parts[0].strip() + ".")
-            result.append(parts[1].strip().capitalize())
-        # Merge consecutive short sentences (<6 words)
-        elif len(words) < 6 and i + 1 < len(sentences) and len(sentences[i + 1].split()) < 6:
-            merged = s.rstrip(".!?") + ", " + sentences[i + 1][0].lower() + sentences[i + 1][1:]
-            result.append(merged)
-            i += 2
-            continue
-        else:
-            result.append(s)
-        i += 1
-    return " ".join(result)
-
-
-def _inject_discourse(text: str) -> str:
-    """Randomly prepend a discourse marker to one sentence."""
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
-    if not sentences:
-        return text
-    idx = random.randint(0, len(sentences) - 1)
-    marker = random.choice(DISCOURSE_MARKERS)
-    sentences[idx] = marker + sentences[idx][0].lower() + sentences[idx][1:]
-    return " ".join(sentences)
+from config import settings
 
 
 def humanize(text: str) -> dict:
-    """Run the full humanization pipeline and return intermediate steps."""
-    # Step 1 – Paraphrase
-    paraphrased = paraphrase(text, intensity=3)
+    """Transform AI-generated text into natural, human-sounding writing."""
+    if settings.groq_api_key:
+        return _humanize_groq(text)
+    return _humanize_pipeline(text)
 
-    # Step 2 – Back-translation EN → FR → EN
+
+def _humanize_groq(text: str) -> dict:
+    from services.groq_client import groq_chat
+
+    result = groq_chat(
+        system_prompt=(
+            "You are an expert at rewriting AI-generated text so it reads as if a "
+            "real person wrote it naturally. Apply ALL of these techniques:\n"
+            "1. Use contractions (don't, it's, we're) instead of formal forms.\n"
+            "2. Vary sentence lengths — mix short punchy sentences with longer ones.\n"
+            "3. Add occasional discourse markers (honestly, look, basically, I mean).\n"
+            "4. Use active voice over passive voice.\n"
+            "5. Replace jargon and overly formal vocabulary with everyday words.\n"
+            "6. Add subtle imperfections — the occasional dash, parenthetical aside, "
+            "or rhetorical question that real humans use.\n"
+            "7. Avoid patterns that flag AI detectors: no repetitive sentence starters, "
+            "no overly balanced paragraph structures, no generic filler phrases.\n\n"
+            "Return ONLY the rewritten text. No explanations, no labels."
+        ),
+        user_prompt=f"Rewrite this AI-generated text to sound completely human:\n\n{text}",
+        temperature=0.8,
+        max_tokens=1024,
+    )
+
+    return {"humanized": result, "steps": None}
+
+
+# ── Local pipeline fallback ──────────────────────────────────────────────────
+
+def _humanize_pipeline(text: str) -> dict:  # pragma: no cover
+    import random
+    import re
+    from services.paraphrase_service import paraphrase
+    from services.translate_service import translate
+
+    CONTRACTIONS = {
+        "do not": "don't", "does not": "doesn't", "did not": "didn't",
+        "is not": "isn't", "are not": "aren't", "was not": "wasn't",
+        "will not": "won't", "would not": "wouldn't", "cannot": "can't",
+        "I am": "I'm", "you are": "you're", "it is": "it's",
+        "we are": "we're", "they are": "they're", "that is": "that's",
+    }
+    MARKERS = ["Honestly, ", "Basically, ", "Look, ", "Actually, ", "Frankly, "]
+
+    paraphrased = paraphrase(text, intensity=3)
     try:
         french = translate(paraphrased, "en", "fr")
-        back_translated = translate(french, "fr", "en")
+        back = translate(french, "fr", "en")
     except Exception:
-        back_translated = paraphrased
+        back = paraphrased
 
-    # Step 3 – Burstiness modulation
-    bursty = _modulate_burstiness(back_translated)
+    for formal, short in CONTRACTIONS.items():
+        back = re.sub(r"\b" + re.escape(formal) + r"\b", short, back, flags=re.IGNORECASE)
 
-    # Step 4 – Human heuristics
-    humanized = _inject_discourse(_apply_contractions(bursty))
+    sentences = re.split(r"(?<=[.!?])\s+", back.strip())
+    if sentences:
+        idx = random.randint(0, len(sentences) - 1)
+        m = random.choice(MARKERS)
+        sentences[idx] = m + sentences[idx][0].lower() + sentences[idx][1:]
+    humanized = " ".join(sentences)
 
     return {
         "humanized": humanized,
-        "steps": {
-            "paraphrased": paraphrased,
-            "back_translated": back_translated,
-            "bursty": bursty,
-        },
+        "steps": {"paraphrased": paraphrased, "back_translated": back},
     }
