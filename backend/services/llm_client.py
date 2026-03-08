@@ -149,20 +149,28 @@ def llm_chat_premium(
         {"role": "user", "content": user_prompt},
     ]
 
-    if settings.github_pat:
+    pat = settings.github_pat
+    if pat:
+        logger.info(
+            "Attempting GitHub Models: model=%s, PAT prefix=%s..., url=%s",
+            model, pat[:10], GITHUB_MODELS_URL,
+        )
         try:
             content = _call_provider(
                 url=GITHUB_MODELS_URL,
-                api_key=settings.github_pat,
+                api_key=pat,
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=90.0,
             )
+            logger.info("GitHub Models (%s) succeeded.", model)
             return content, model
         except ProviderError as e:
-            logger.warning("GitHub Models (%s) failed (%s), falling back to standard cascade.", model, e)
+            logger.error("GitHub Models (%s) FAILED: %s — falling back to standard.", model, e)
+    else:
+        logger.warning("GITHUB_PAT not set — skipping premium, using standard cascade.")
 
     # Fallback: use the standard Groq -> HF cascade
     content = llm_chat_messages(messages, temperature=temperature, max_tokens=max_tokens)
