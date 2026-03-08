@@ -7,6 +7,17 @@ export const metadata: Metadata = {
   title: "Anovo — AI-Powered Writing Tool",
   description:
     "Free, open-source AI writing tool: paraphraser, grammar checker, summarizer, translator and more.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/icon-192.png",
+  },
+  themeColor: "#0284c7",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Anovo",
+  },
 };
 
 export default function RootLayout({
@@ -17,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark');}}catch(e){}})()`,
