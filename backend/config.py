@@ -16,9 +16,14 @@ class Settings(BaseSettings):
     cowriter_model: str = "distilgpt2"
     max_input_length: int = 1024
 
-    # Chat — Groq (free) is used when groq_api_key is set; falls back to Ollama
+    # Chat — Groq (free) is used when groq_api_key is set; falls back to HF / Ollama
     groq_api_key: str = ""
     groq_model: str = "llama-3.3-70b-versatile"
+
+    # HuggingFace Inference API — middle-tier fallback between Groq and local
+    hf_api_token: str = ""
+    hf_model: str = "mistralai/Mistral-7B-Instruct-v0.3"
+
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3"
 

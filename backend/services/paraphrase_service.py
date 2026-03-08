@@ -1,7 +1,7 @@
 """
 Paraphrase service.
 
-Uses Groq LLM when available; falls back to local T5 model.
+Uses LLM (Groq / HF Inference) when available; falls back to local T5 model.
 """
 from __future__ import annotations
 
@@ -34,16 +34,17 @@ INTENSITY_PROMPTS: dict[int, str] = {
 
 def paraphrase(text: str, intensity: int = 3) -> str:
     """Return a paraphrased version of *text* at the given intensity (1–5)."""
-    if settings.groq_api_key:
-        return _paraphrase_groq(text, intensity)
-    return _paraphrase_t5(text, intensity)
+    try:
+        return _paraphrase_llm(text, intensity)
+    except RuntimeError:
+        return _paraphrase_t5(text, intensity)
 
 
-def _paraphrase_groq(text: str, intensity: int) -> str:
-    from services.groq_client import groq_chat
+def _paraphrase_llm(text: str, intensity: int) -> str:
+    from services.llm_client import llm_chat
 
     instruction = INTENSITY_PROMPTS.get(intensity, INTENSITY_PROMPTS[3])
-    return groq_chat(
+    return llm_chat(
         system_prompt=(
             "You are a professional writing assistant specialised in paraphrasing. "
             "Return ONLY the paraphrased text — no explanations, no labels, "

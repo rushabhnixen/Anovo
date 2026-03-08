@@ -1,7 +1,7 @@
 """
 AI Chat service.
 
-Uses Groq API (free tier) when GROQ_API_KEY is set in config.
+Uses LLM cascade (Groq / HF Inference) when available.
 Falls back to a self-hosted Ollama instance otherwise.
 """
 from __future__ import annotations
@@ -31,29 +31,11 @@ def chat(message: str, mode: str = "general", history: list[dict] | None = None)
         messages.append({"role": h["role"], "content": h["content"]})
     messages.append({"role": "user", "content": message})
 
-    if settings.groq_api_key:
-        return _chat_groq(messages)
-    return _chat_ollama(messages)
-
-
-def _chat_groq(messages: list[dict[str, str]]) -> str:
-    """Call the Groq API (OpenAI-compatible, free tier)."""
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {settings.groq_api_key}",
-        "Content-Type": "application/json",
-    }
-    payload = {"model": settings.groq_model, "messages": messages}
-
     try:
-        response = httpx.post(url, json=payload, headers=headers, timeout=60.0)
-        response.raise_for_status()
-    except httpx.ConnectError:
-        raise RuntimeError("Cannot connect to Groq API. Check your GROQ_API_KEY.")
-    except httpx.HTTPStatusError as e:
-        raise RuntimeError(f"Groq API error {e.response.status_code}: {e.response.text}")
-
-    return response.json()["choices"][0]["message"]["content"]
+        from services.llm_client import llm_chat_messages
+        return llm_chat_messages(messages)
+    except RuntimeError:
+        return _chat_ollama(messages)
 
 
 def _chat_ollama(messages: list[dict[str, str]]) -> str:
@@ -66,7 +48,7 @@ def _chat_ollama(messages: list[dict[str, str]]) -> str:
         response.raise_for_status()
     except httpx.ConnectError:
         raise RuntimeError(
-            "Chat is unavailable. Set GROQ_API_KEY for free AI chat, "
+            "Chat is unavailable. Set GROQ_API_KEY or HF_API_TOKEN for AI chat, "
             "or run Ollama at: " + settings.ollama_url
         )
 

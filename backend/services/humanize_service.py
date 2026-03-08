@@ -1,7 +1,7 @@
 """
 AI Text Humanizer service.
 
-Uses Groq LLM for high-quality humanization when available.
+Uses LLM (Groq / HF Inference) for high-quality humanization when available.
 Falls back to a multi-step local pipeline (paraphrase + back-translate +
 burstiness + heuristics) otherwise.
 """
@@ -12,15 +12,16 @@ from config import settings
 
 def humanize(text: str) -> dict:
     """Transform AI-generated text into natural, human-sounding writing."""
-    if settings.groq_api_key:
-        return _humanize_groq(text)
-    return _humanize_pipeline(text)
+    try:
+        return _humanize_llm(text)
+    except RuntimeError:
+        return _humanize_pipeline(text)
 
 
-def _humanize_groq(text: str) -> dict:
-    from services.groq_client import groq_chat
+def _humanize_llm(text: str) -> dict:
+    from services.llm_client import llm_chat
 
-    result = groq_chat(
+    result = llm_chat(
         system_prompt=(
             "You are an expert at rewriting AI-generated text so it reads as if a "
             "real person wrote it naturally. Apply ALL of these techniques:\n"

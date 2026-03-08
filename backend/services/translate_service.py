@@ -1,7 +1,7 @@
 """
 Translation service.
 
-Uses Groq LLM when available; falls back to Helsinki-NLP OpusMT models.
+Uses LLM (Groq / HF Inference) when available; falls back to Helsinki-NLP OpusMT models.
 """
 from __future__ import annotations
 
@@ -27,18 +27,19 @@ LANG_NAMES: dict[str, str] = {
 
 def translate(text: str, source_language: str, target_language: str) -> str:
     """Translate *text* from *source_language* to *target_language*."""
-    if settings.groq_api_key:
-        return _translate_groq(text, source_language, target_language)
-    return _translate_opus(text, source_language, target_language)
+    try:
+        return _translate_llm(text, source_language, target_language)
+    except RuntimeError:
+        return _translate_opus(text, source_language, target_language)
 
 
-def _translate_groq(text: str, src: str, tgt: str) -> str:
-    from services.groq_client import groq_chat
+def _translate_llm(text: str, src: str, tgt: str) -> str:
+    from services.llm_client import llm_chat
 
     src_name = LANG_NAMES.get(src, src)
     tgt_name = LANG_NAMES.get(tgt, tgt)
 
-    return groq_chat(
+    return llm_chat(
         system_prompt=(
             "You are a professional translator. Translate accurately while preserving "
             "tone and nuance. Return ONLY the translated text — no explanations, "

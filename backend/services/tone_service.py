@@ -1,7 +1,7 @@
 """
 Tone detection service.
 
-Uses Groq LLM when available; falls back to local zero-shot classification.
+Uses LLM (Groq / HF Inference) when available; falls back to local zero-shot classification.
 """
 from __future__ import annotations
 
@@ -18,16 +18,17 @@ TONE_LABELS = [
 
 def detect_tone(text: str) -> dict:
     """Classify *text* into tone categories and return scored results."""
-    if settings.groq_api_key:
-        return _detect_groq(text)
-    return _detect_local(text)
+    try:
+        return _detect_llm(text)
+    except RuntimeError:
+        return _detect_local(text)
 
 
-def _detect_groq(text: str) -> dict:
-    from services.groq_client import groq_chat
+def _detect_llm(text: str) -> dict:
+    from services.llm_client import llm_chat
 
     labels_str = ", ".join(TONE_LABELS)
-    raw = groq_chat(
+    raw = llm_chat(
         system_prompt=(
             "You are a tone analysis expert. Analyze text and rate how strongly each "
             "tone is present on a scale from 0.0 to 1.0.\n"

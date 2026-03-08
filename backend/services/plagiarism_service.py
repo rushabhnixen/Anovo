@@ -1,7 +1,7 @@
 """
 Plagiarism detection service.
 
-Uses Groq LLM for semantic similarity analysis when available;
+Uses LLM (Groq / HF Inference) for semantic similarity analysis when available;
 falls back to local sentence-transformer embeddings + cosine similarity.
 """
 from __future__ import annotations
@@ -14,15 +14,16 @@ from config import settings
 
 def check_plagiarism(text: str, reference_text: str) -> dict:
     """Compare *text* against *reference_text* and return similarity info."""
-    if settings.groq_api_key:
-        return _check_groq(text, reference_text)
-    return _check_local(text, reference_text)
+    try:
+        return _check_llm(text, reference_text)
+    except RuntimeError:
+        return _check_local(text, reference_text)
 
 
-def _check_groq(text: str, reference_text: str) -> dict:
-    from services.groq_client import groq_chat
+def _check_llm(text: str, reference_text: str) -> dict:
+    from services.llm_client import llm_chat
 
-    raw = groq_chat(
+    raw = llm_chat(
         system_prompt=(
             "You are a plagiarism detection expert. Compare two texts and determine "
             "their semantic similarity.\n\n"

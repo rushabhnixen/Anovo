@@ -1,7 +1,7 @@
 """
 Summarization service.
 
-Uses Groq LLM when available; falls back to local BART model.
+Uses LLM (Groq / HF Inference) when available; falls back to local BART model.
 """
 from __future__ import annotations
 
@@ -12,13 +12,14 @@ from config import settings
 
 def summarize(text: str, mode: str = "paragraph", max_length: int = 150) -> str:
     """Return a summary of *text* in paragraph or bullet mode."""
-    if settings.groq_api_key:
-        return _summarize_groq(text, mode)
-    return _summarize_bart(text, mode, max_length)
+    try:
+        return _summarize_llm(text, mode)
+    except RuntimeError:
+        return _summarize_bart(text, mode, max_length)
 
 
-def _summarize_groq(text: str, mode: str) -> str:
-    from services.groq_client import groq_chat
+def _summarize_llm(text: str, mode: str) -> str:
+    from services.llm_client import llm_chat
 
     if mode == "bullet":
         instruction = (
@@ -31,7 +32,7 @@ def _summarize_groq(text: str, mode: str) -> str:
             "Return ONLY the summary — no labels, no preamble."
         )
 
-    return groq_chat(
+    return llm_chat(
         system_prompt="You are a professional summarization assistant.",
         user_prompt=f"{instruction}\n\nText:\n{text}",
         temperature=0.3,

@@ -1,7 +1,7 @@
 """
 Co-writer (autocomplete) service.
 
-Uses Groq LLM when available; falls back to local distilgpt2.
+Uses LLM (Groq / HF Inference) when available; falls back to local distilgpt2.
 """
 from __future__ import annotations
 
@@ -12,15 +12,16 @@ def generate_suggestions(
     text: str, max_tokens: int = 50, num_suggestions: int = 3
 ) -> list[str]:
     """Generate *num_suggestions* autocomplete continuations for *text*."""
-    if settings.groq_api_key:
-        return _suggest_groq(text, max_tokens, num_suggestions)
-    return _suggest_local(text, max_tokens, num_suggestions)
+    try:
+        return _suggest_llm(text, max_tokens, num_suggestions)
+    except RuntimeError:
+        return _suggest_local(text, max_tokens, num_suggestions)
 
 
-def _suggest_groq(text: str, max_tokens: int, n: int) -> list[str]:
-    from services.groq_client import groq_chat
+def _suggest_llm(text: str, max_tokens: int, n: int) -> list[str]:
+    from services.llm_client import llm_chat
 
-    raw = groq_chat(
+    raw = llm_chat(
         system_prompt=(
             f"You are a creative writing autocomplete engine. "
             f"Given the text below, produce exactly {n} different possible "
