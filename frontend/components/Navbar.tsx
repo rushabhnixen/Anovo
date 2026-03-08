@@ -16,6 +16,7 @@ const navLinks = [
   { label: "Tone", href: "/tone" },
   { label: "Co-Writer", href: "/cowriter" },
   { label: "Chat", href: "/chat" },
+  { label: "Upload Doc", href: "/upload" },
   { label: "History", href: "/history" },
   { label: "API Docs", href: "/api-docs" },
 ];

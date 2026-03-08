@@ -34,15 +34,16 @@ export default function HumanizePage() {
       <h1 className="text-2xl font-bold mb-1">AI Text Humanizer</h1>
       <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
         Transform AI-generated text into natural, human-sounding writing.
+        Supports long texts — large documents are automatically chunked and processed section by section.
       </p>
       <div className="flex flex-wrap gap-2 mb-6 text-xs text-gray-500 dark:text-gray-400">
-        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">1. Paraphrase</span>
-        <span>→</span>
-        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">2. Back-Translation</span>
-        <span>→</span>
-        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">3. Burstiness Modulation</span>
-        <span>→</span>
-        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">4. Human Heuristics</span>
+        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">Sentence Variation</span>
+        <span>+</span>
+        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">Natural Vocabulary</span>
+        <span>+</span>
+        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">Human Voice</span>
+        <span>+</span>
+        <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full">AI Detection Bypass</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

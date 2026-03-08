@@ -201,3 +201,26 @@ export const deleteHistoryEntry = (token: string, id: number): Promise<void> =>
   }).then(async (res) => {
     if (!res.ok) throw new Error("Failed to delete history entry");
   });
+
+// ── Document Upload ─────────────────────────────────────────────────────────
+
+export const uploadDocument = async (
+  file: File,
+  mode: "humanize" | "paraphrase",
+): Promise<Blob> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("mode", mode);
+
+  const res = await fetch(`${API_URL}/api/upload-doc`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Upload failed");
+  }
+
+  return res.blob();
+};

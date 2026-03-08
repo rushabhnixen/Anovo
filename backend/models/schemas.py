@@ -5,7 +5,7 @@ from typing import Optional
 # ── Paraphrase ──────────────────────────────────────────────────────────────
 
 class ParaphraseRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000, description="Text to paraphrase")
+    text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
 
 
@@ -69,7 +69,7 @@ class TranslateResponse(BaseModel):
 # ── Humanize ─────────────────────────────────────────────────────────────────
 
 class HumanizeRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000, description="Text to humanize")
+    text: str = Field(..., min_length=1, max_length=10000, description="Text to humanize")
 
 
 class HumanizeResponse(BaseModel):

@@ -65,6 +65,13 @@ const features = [
     color: "bg-teal-50 dark:bg-teal-950 border-teal-200 dark:border-teal-800",
   },
   {
+    title: "Document Upload",
+    description: "Upload a Word doc (.docx) and humanize or paraphrase the entire file.",
+    href: "/upload",
+    icon: "📄",
+    color: "bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800",
+  },
+  {
     title: "Developer API",
     description: "Explore all endpoints with interactive Swagger / ReDoc documentation.",
     href: "/api-docs",

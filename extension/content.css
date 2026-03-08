@@ -1,0 +1,150 @@
+/* Anovo Chrome Extension — Overlay Styles */
+
+#anovo-overlay {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 420px;
+  max-height: 80vh;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: #1a202c;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.anovo-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #0284c7;
+  color: #fff;
+}
+
+.anovo-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.anovo-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.anovo-close:hover {
+  opacity: 1;
+}
+
+.anovo-body {
+  padding: 16px;
+  overflow-y: auto;
+  max-height: 60vh;
+  flex: 1;
+}
+
+.anovo-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.anovo-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e2e8f0;
+  border-top-color: #0284c7;
+  border-radius: 50%;
+  animation: anovo-spin 0.7s linear infinite;
+}
+
+@keyframes anovo-spin {
+  to { transform: rotate(360deg); }
+}
+
+.anovo-result {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.anovo-error {
+  color: #dc2626;
+  font-size: 13px;
+}
+
+.anovo-footer {
+  padding: 10px 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.anovo-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.anovo-btn-copy {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.anovo-btn-copy:hover {
+  background: #e2e8f0;
+}
+
+.anovo-btn-replace {
+  background: #0284c7;
+  color: #fff;
+}
+
+.anovo-btn-replace:hover {
+  background: #0369a1;
+}
+
+/* Dark mode detection */
+@media (prefers-color-scheme: dark) {
+  #anovo-overlay {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .anovo-body {
+    color: #e2e8f0;
+  }
+
+  .anovo-footer {
+    border-top-color: #334155;
+  }
+
+  .anovo-btn-copy {
+    background: #334155;
+    color: #e2e8f0;
+  }
+
+  .anovo-btn-copy:hover {
+    background: #475569;
+  }
+}
