@@ -60,23 +60,3 @@ app.include_router(history.router)
 def health_check() -> dict:
     """Health check endpoint."""
     return {"status": "ok", "service": "Anovo API", "version": app.version}
-
-
-@app.get("/debug/db", tags=["health"])
-def debug_db() -> dict:
-    """Debug database connectivity."""
-    import traceback
-    try:
-        from database import SessionLocal, engine
-        # Test engine
-        with engine.connect() as conn:
-            conn.execute(__import__("sqlalchemy").text("SELECT 1"))
-        # Test session
-        db = SessionLocal()
-        db.close()
-        # Test bcrypt
-        from services.auth_service import hash_password
-        h = hash_password("test")
-        return {"db": "ok", "bcrypt": "ok", "hash_sample": h[:20]}
-    except Exception as e:
-        return {"error": f"{type(e).__name__}: {e}", "trace": traceback.format_exc()}
