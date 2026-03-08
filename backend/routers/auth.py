@@ -35,22 +35,32 @@ def _current_user_id(
 
 @router.post("/register", response_model=TokenResponse, summary="Register a new account")
 def register(request: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    if get_user_by_email(db, request.email):
-        raise HTTPException(status_code=409, detail="Email already registered")
-    if get_user_by_username(db, request.username):
-        raise HTTPException(status_code=409, detail="Username already taken")
-    user = create_user(db, request.username, request.email, request.password)
-    token = create_access_token(user.id)
-    return TokenResponse(access_token=token)
+    try:
+        if get_user_by_email(db, request.email):
+            raise HTTPException(status_code=409, detail="Email already registered")
+        if get_user_by_username(db, request.username):
+            raise HTTPException(status_code=409, detail="Username already taken")
+        user = create_user(db, request.username, request.email, request.password)
+        token = create_access_token(user.id)
+        return TokenResponse(access_token=token)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}")
 
 
 @router.post("/login", response_model=TokenResponse, summary="Log in")
 def login(request: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    user = authenticate_user(db, request.email, request.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
-    token = create_access_token(user.id)
-    return TokenResponse(access_token=token)
+    try:
+        user = authenticate_user(db, request.email, request.password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Incorrect email or password")
+        token = create_access_token(user.id)
+        return TokenResponse(access_token=token)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}")
 
 
 @router.get("/me", response_model=UserResponse, summary="Get current user")
