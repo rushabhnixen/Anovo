@@ -13,7 +13,7 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-_CHUNK_CHAR_LIMIT = 2500
+_CHUNK_CHAR_LIMIT = 3500
 
 INTENSITY_PROMPTS: dict[int, str] = {
     1: (
@@ -46,20 +46,20 @@ _SYSTEM_PROMPT = (
 )
 
 
-def paraphrase(text: str, intensity: int = 3) -> str:
-    """Return a paraphrased version of *text* at the given intensity (1-5)."""
+def paraphrase(text: str, intensity: int = 3) -> tuple[str, str]:
+    """Return (paraphrased_text, model_used) at the given intensity (1-5)."""
     try:
-        return _paraphrase_llm(text, intensity)
+        return _paraphrase_llm(text, intensity), "standard"
     except RuntimeError:
-        return _paraphrase_t5(text, intensity)
+        return _paraphrase_t5(text, intensity), "standard"
 
 
-def paraphrase_premium(text: str, intensity: int = 3) -> str:
-    """Paraphrase using the premium 405B model."""
+def paraphrase_premium(text: str, intensity: int = 3, model: str = "Meta-Llama-3.1-405B-Instruct") -> tuple[str, str]:
+    """Paraphrase using a premium GitHub Models model. Returns (text, model_used)."""
     try:
-        return _paraphrase_llm_premium(text, intensity)
+        return _paraphrase_llm_premium(text, intensity, model)
     except RuntimeError:
-        return _paraphrase_llm(text, intensity)
+        return _paraphrase_llm(text, intensity), "standard"
 
 
 def _split_into_chunks(text: str) -> list[str]:
@@ -118,10 +118,22 @@ def _paraphrase_llm(text: str, intensity: int) -> str:
     return _paraphrase_with_fn(text, intensity, llm_chat)
 
 
-def _paraphrase_llm_premium(text: str, intensity: int) -> str:
+def _paraphrase_llm_premium(text: str, intensity: int, model: str) -> tuple[str, str]:
     from services.llm_client import llm_chat_premium
 
-    return _paraphrase_with_fn(text, intensity, llm_chat_premium)
+    model_used = "standard"
+
+    def _chat_fn(system_prompt, user_prompt, temperature, max_tokens):
+        nonlocal model_used
+        content, mu = llm_chat_premium(
+            system_prompt, user_prompt, model=model,
+            temperature=temperature, max_tokens=max_tokens,
+        )
+        model_used = mu
+        return content
+
+    result = _paraphrase_with_fn(text, intensity, _chat_fn)
+    return result, model_used
 
 
 # ── T5 fallback ──────────────────────────────────────────────────────────────

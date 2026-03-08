@@ -9,7 +9,7 @@ const TOOLS = [
   { id: "tone", title: "Detect Tone with Anovo" },
 ];
 
-// Create context menu items on install
+// Create context menu items and register side panel on install
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "anovo-parent",
@@ -25,11 +25,32 @@ chrome.runtime.onInstalled.addListener(() => {
       contexts: ["selection"],
     });
   }
+
+  // Add "Open Sidebar" to context menu
+  chrome.contextMenus.create({
+    id: "anovo-sidebar",
+    title: "Open Anovo Sidebar",
+    contexts: ["page", "selection"],
+  });
+
+  // Enable side panel
+  if (chrome.sidePanel) {
+    chrome.sidePanel.setOptions({ path: "sidebar.html", enabled: true });
+  }
 });
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (!info.menuItemId.toString().startsWith("anovo-") || !tab?.id) return;
+  if (!tab?.id) return;
+
+  if (info.menuItemId === "anovo-sidebar") {
+    if (chrome.sidePanel) {
+      chrome.sidePanel.open({ windowId: tab.windowId });
+    }
+    return;
+  }
+
+  if (!info.menuItemId.toString().startsWith("anovo-")) return;
 
   const toolId = info.menuItemId.toString().replace("anovo-", "");
   const text = info.selectionText || "";
@@ -41,4 +62,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     tool: toolId,
     text: text,
   });
+});
+
+// Listen for messages from popup to open sidebar
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === "openSidebar") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0] && chrome.sidePanel) {
+        chrome.sidePanel.open({ windowId: tabs[0].windowId });
+      }
+    });
+    sendResponse({ ok: true });
+  }
 });

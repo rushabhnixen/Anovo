@@ -20,28 +20,29 @@ def paraphrase_endpoint(
     """
     Paraphrase the given text with adjustable intensity.
 
-    Set `premium: true` to use the 405B model (requires authentication and premium account).
+    Set `model` to a GitHub Models model name to use premium mode
+    (requires authentication and premium account).
     """
-    use_premium = False
+    use_premium = request.model != "standard"
 
-    if request.premium:
+    if use_premium:
         if not user_id:
             raise HTTPException(status_code=401, detail="Authentication required for premium mode")
         user = get_user_by_id(db, user_id)
         if not user or not user.is_premium:
             raise HTTPException(status_code=403, detail="Premium subscription required")
-        use_premium = True
 
     try:
         if use_premium:
-            result = _paraphrase_premium(request.text, request.intensity)
+            result_text, model_used = _paraphrase_premium(request.text, request.intensity, model=request.model)
         else:
-            result = _paraphrase(request.text, request.intensity)
+            result_text, model_used = _paraphrase(request.text, request.intensity)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
     return ParaphraseResponse(
         original=request.text,
-        paraphrased=result,
+        paraphrased=result_text,
         intensity=request.intensity,
+        model_used=model_used,
     )

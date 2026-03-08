@@ -4,26 +4,30 @@ import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import SynonymSlider from "@/components/SynonymSlider";
 import OutputDisplay from "@/components/OutputDisplay";
-import PremiumToggle from "@/components/PremiumToggle";
-import { paraphraseText } from "@/lib/api";
+import ModelSelector from "@/components/ModelSelector";
+import { paraphraseText, saveHistory } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function ParaphrasePage() {
   const [inputText, setInputText] = useState("");
   const [intensity, setIntensity] = useState(3);
   const [output, setOutput] = useState("");
+  const [modelUsed, setModelUsed] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [premium, setPremium] = useState(false);
+  const [model, setModel] = useState("standard");
   const { token } = useAuth();
 
   const handleParaphrase = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
     setError("");
+    setModelUsed("");
     try {
-      const res = await paraphraseText(inputText, intensity, premium, token ?? undefined);
+      const res = await paraphraseText(inputText, intensity, model, token ?? undefined);
       setOutput(res.paraphrased);
+      setModelUsed(res.model_used ?? "standard");
+      if (token) saveHistory(token, "paraphrase", inputText, res.paraphrased).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -39,14 +43,13 @@ export default function ParaphrasePage() {
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Input */}
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Original Text
           </label>
           <TextEditor value={inputText} onChange={setInputText} placeholder="Enter text to paraphrase…" />
           <SynonymSlider value={intensity} onChange={setIntensity} />
-          <PremiumToggle enabled={premium} onChange={setPremium} />
+          <ModelSelector selectedModel={model} onModelChange={setModel} />
           <button
             onClick={handleParaphrase}
             disabled={loading || !inputText.trim()}
@@ -57,8 +60,19 @@ export default function ParaphrasePage() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
 
-        {/* Output */}
-        <OutputDisplay text={output} label="Paraphrased Text" loading={loading} />
+        <div className="flex flex-col gap-3">
+          <OutputDisplay text={output} label="Paraphrased Text" loading={loading} />
+          {modelUsed && modelUsed !== "standard" && output && (
+            <p className="text-xs text-brand-600 dark:text-brand-400">
+              Processed with {modelUsed}
+            </p>
+          )}
+          {modelUsed === "standard" && model !== "standard" && output && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Premium model unavailable — processed with standard model
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

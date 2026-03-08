@@ -49,6 +49,15 @@ def _optional_user_id(
     return decode_token(credentials.credentials)
 
 
+def _is_admin_email(email: str) -> bool:
+    """Check if the given email is in the ADMIN_EMAILS config list."""
+    if not settings.admin_emails:
+        return False
+    return email.strip().lower() in {
+        e.strip().lower() for e in settings.admin_emails.split(",") if e.strip()
+    }
+
+
 @router.post("/register", response_model=TokenResponse, summary="Register a new account")
 def register(request: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     try:
@@ -57,6 +66,9 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
         if get_user_by_username(db, request.username):
             raise HTTPException(status_code=409, detail="Username already taken")
         user = create_user(db, request.username, request.email, request.password)
+        if _is_admin_email(request.email):
+            user.is_admin = True
+            db.commit()
         token = create_access_token(user.id)
         return TokenResponse(access_token=token)
     except HTTPException:
@@ -71,6 +83,9 @@ def login(request: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
         user = authenticate_user(db, request.email, request.password)
         if not user:
             raise HTTPException(status_code=401, detail="Incorrect email or password")
+        if _is_admin_email(request.email) and not user.is_admin:
+            user.is_admin = True
+            db.commit()
         token = create_access_token(user.id)
         return TokenResponse(access_token=token)
     except HTTPException:

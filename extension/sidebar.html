@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anovo Sidebar</title>
+  <link rel="stylesheet" href="sidebar.css" />
+</head>
+<body>
+  <!-- Header -->
+  <div class="sb-header">
+    <h1>Anovo</h1>
+    <span class="sb-version">v1.1.0</span>
+  </div>
+
+  <!-- Auth section -->
+  <div id="auth-section" class="sb-section">
+    <div id="auth-login" class="sb-auth-form">
+      <div class="sb-section-title">Sign in for premium models</div>
+      <input type="email" id="auth-email" placeholder="Email" class="sb-input" />
+      <input type="password" id="auth-password" placeholder="Password" class="sb-input" />
+      <button id="auth-submit" class="sb-btn sb-btn-primary sb-btn-full">Sign in</button>
+      <div id="auth-error" class="sb-error"></div>
+    </div>
+    <div id="auth-user" class="sb-auth-user" style="display:none">
+      <div class="sb-user-info">
+        <span id="auth-username" class="sb-username"></span>
+        <span id="auth-badge" class="sb-badge" style="display:none">Premium</span>
+      </div>
+      <button id="auth-logout" class="sb-btn sb-btn-small">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Model selector (premium only) -->
+  <div id="model-section" class="sb-section" style="display:none">
+    <label class="sb-label">Model</label>
+    <select id="model-select" class="sb-select">
+      <option value="standard">Standard (Groq)</option>
+      <option value="gpt-4o">GPT-4o</option>
+      <option value="Meta-Llama-3.1-405B-Instruct">Llama 405B</option>
+      <option value="Mistral-large-2407">Mistral Large</option>
+      <option value="Meta-Llama-3.1-70B-Instruct">Llama 70B</option>
+    </select>
+  </div>
+
+  <!-- Tool tabs -->
+  <div class="sb-tabs">
+    <button class="sb-tab active" data-tool="humanize">Humanize</button>
+    <button class="sb-tab" data-tool="paraphrase">Paraphrase</button>
+    <button class="sb-tab" data-tool="grammar">Grammar</button>
+    <button class="sb-tab" data-tool="summarize">Summarize</button>
+    <button class="sb-tab" data-tool="translate">Translate</button>
+    <button class="sb-tab" data-tool="tone">Tone</button>
+  </div>
+
+  <!-- Input -->
+  <div class="sb-section">
+    <textarea id="sb-input" class="sb-textarea" placeholder="Paste or type text here…"></textarea>
+    <button id="sb-process" class="sb-btn sb-btn-primary sb-btn-full">Process</button>
+  </div>
+
+  <!-- Output -->
+  <div id="sb-output-area" class="sb-section" style="display:none">
+    <div class="sb-section-title">Result</div>
+    <div id="sb-output" class="sb-output-box"></div>
+    <div class="sb-output-actions">
+      <button id="sb-copy" class="sb-btn sb-btn-small">Copy</button>
+    </div>
+    <div id="sb-model-used" class="sb-model-used"></div>
+  </div>
+
+  <!-- Settings -->
+  <div class="sb-footer">
+    <label class="sb-label">API URL</label>
+    <input type="text" id="sb-api-url" class="sb-input" placeholder="https://rushabh13-anovo-api.hf.space" />
+    <button id="sb-save-url" class="sb-btn sb-btn-small" style="margin-top:4px">Save</button>
+  </div>
+
+  <script src="sidebar.js"></script>
+</body>
+</html>

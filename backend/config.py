@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Premium promo codes (comma-separated)
     premium_promo_codes: str = ""
 
+    # Admin emails (comma-separated) — users with these emails auto-become admin
+    admin_emails: str = ""
+
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3"
 

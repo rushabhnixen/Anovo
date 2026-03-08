@@ -6,6 +6,7 @@ export interface ParaphraseResponse {
   original: string;
   paraphrased: string;
   intensity: number;
+  model_used?: string;
 }
 
 export interface GrammarError {
@@ -40,6 +41,7 @@ export interface HumanizeResponse {
   original: string;
   humanized: string;
   steps?: Record<string, string>;
+  model_used?: string;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,11 +79,49 @@ async function postAuth<T>(path: string, body: unknown, token: string): Promise<
   return res.json() as Promise<T>;
 }
 
-// ── API calls ─────────────────────────────────────────────────────────────────
+async function getAuth<T>(path: string, token: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+  return res.json() as Promise<T>;
+}
 
-export const paraphraseText = (text: string, intensity: number, premium = false, token?: string) => {
-  const body = { text, intensity, premium };
-  if (premium && token) {
+async function patchAuth<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+  return res.json() as Promise<T>;
+}
+
+async function deleteAuth(path: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+}
+
+// ── Core tool API calls ──────────────────────────────────────────────────────
+
+export const paraphraseText = (text: string, intensity: number, model = "standard", token?: string) => {
+  const body = { text, intensity, model };
+  if (model !== "standard" && token) {
     return postAuth<ParaphraseResponse>("/api/paraphrase", body, token);
   }
   return post<ParaphraseResponse>("/api/paraphrase", body);
@@ -99,9 +139,9 @@ export const translateText = (
   target_language: string
 ) => post<TranslateResponse>("/api/translate", { text, source_language, target_language });
 
-export const humanizeText = (text: string, premium = false, token?: string) => {
-  const body = { text, premium };
-  if (premium && token) {
+export const humanizeText = (text: string, model = "standard", token?: string) => {
+  const body = { text, model };
+  if (model !== "standard" && token) {
     return postAuth<HumanizeResponse>("/api/humanize", body, token);
   }
   return post<HumanizeResponse>("/api/humanize", body);
@@ -169,6 +209,7 @@ export interface UserResponse {
   username: string;
   email: string;
   is_premium: boolean;
+  is_admin: boolean;
 }
 
 export interface HistoryEntry {
@@ -188,12 +229,7 @@ export const loginUser = (email: string, password: string) =>
   post<TokenResponse>("/api/auth/login", { email, password });
 
 export const getCurrentUser = (token: string) =>
-  fetch(`${API_URL}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).then(async (res) => {
-    if (!res.ok) throw new Error("Not authenticated");
-    return res.json() as Promise<UserResponse>;
-  });
+  getAuth<UserResponse>("/api/auth/me", token);
 
 export const redeemPromoCode = (token: string, code: string) =>
   postAuth<UserResponse>("/api/auth/redeem-promo", { code }, token);
@@ -201,12 +237,7 @@ export const redeemPromoCode = (token: string, code: string) =>
 // ── History API calls ─────────────────────────────────────────────────────────
 
 export const getHistory = (token: string, limit = 50): Promise<HistoryEntry[]> =>
-  fetch(`${API_URL}/api/history?limit=${limit}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).then(async (res) => {
-    if (!res.ok) throw new Error("Failed to fetch history");
-    return res.json() as Promise<HistoryEntry[]>;
-  });
+  getAuth<HistoryEntry[]>(`/api/history?limit=${limit}`, token);
 
 export const saveHistory = (
   token: string,
@@ -214,32 +245,24 @@ export const saveHistory = (
   input_text: string,
   output_text: string,
 ): Promise<HistoryEntry> =>
-  fetch(`${API_URL}/api/history`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ tool, input_text, output_text }),
-  }).then(async (res) => {
-    if (!res.ok) throw new Error("Failed to save history");
-    return res.json() as Promise<HistoryEntry>;
-  });
+  postAuth<HistoryEntry>("/api/history", { tool, input_text, output_text }, token);
 
 export const deleteHistoryEntry = (token: string, id: number): Promise<void> =>
-  fetch(`${API_URL}/api/history/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-  }).then(async (res) => {
-    if (!res.ok) throw new Error("Failed to delete history entry");
-  });
+  deleteAuth(`/api/history/${id}`, token);
 
 // ── Document Upload ─────────────────────────────────────────────────────────
+
+export interface DocProcessResponse {
+  original_text: string;
+  processed_text: string;
+  mode: string;
+  filename: string;
+}
 
 export const uploadDocument = async (
   file: File,
   mode: "humanize" | "paraphrase",
-): Promise<Blob> => {
+): Promise<DocProcessResponse> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("mode", mode);
@@ -254,5 +277,44 @@ export const uploadDocument = async (
     throw new Error(err.detail ?? "Upload failed");
   }
 
+  return res.json() as Promise<DocProcessResponse>;
+};
+
+export const downloadProcessedDoc = async (
+  processed_text: string,
+  filename: string,
+): Promise<Blob> => {
+  const res = await fetch(`${API_URL}/api/upload-doc/download`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ processed_text, filename }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Download failed");
+  }
+
   return res.blob();
 };
+
+// ── Admin API calls ──────────────────────────────────────────────────────────
+
+export interface AdminStatsResponse {
+  total_users: number;
+  premium_users: number;
+  admin_users: number;
+  total_history_entries: number;
+}
+
+export const getAdminUsers = (token: string, skip = 0, limit = 50, search = "") =>
+  getAuth<UserResponse[]>(`/api/admin/users?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`, token);
+
+export const updateAdminUser = (token: string, userId: number, updates: { is_premium?: boolean; is_admin?: boolean }) =>
+  patchAuth<UserResponse>(`/api/admin/users/${userId}`, updates, token);
+
+export const deleteAdminUser = (token: string, userId: number) =>
+  deleteAuth(`/api/admin/users/${userId}`, token);
+
+export const getAdminStats = (token: string) =>
+  getAuth<AdminStatsResponse>("/api/admin/stats", token);

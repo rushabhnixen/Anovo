@@ -25,6 +25,13 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 HF_URL = "https://router.huggingface.co/v1/chat/completions"
 GITHUB_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
 
+GITHUB_MODELS_AVAILABLE = [
+    "Meta-Llama-3.1-405B-Instruct",
+    "gpt-4o",
+    "Mistral-large-2407",
+    "Meta-Llama-3.1-70B-Instruct",
+]
+
 
 class ProviderError(Exception):
     """A single provider failed; the cascade should try the next one."""
@@ -128,13 +135,14 @@ def _rotate_from(start_key: str) -> list[str]:
 def llm_chat_premium(
     system_prompt: str,
     user_prompt: str,
+    model: str = "Meta-Llama-3.1-405B-Instruct",
     temperature: float = 0.7,
     max_tokens: int = 4096,
-) -> str:
-    """Call the premium model (GitHub Models / Meta-Llama-3.1-405B-Instruct).
+) -> tuple[str, str]:
+    """Call a premium model via GitHub Models API.
 
-    Falls back to the standard Groq/HF cascade if GitHub PAT is not configured
-    or if the call fails.
+    Returns (content, model_used).  Falls back to the standard Groq/HF cascade
+    if GitHub PAT is not configured or if the call fails.
     """
     messages = [
         {"role": "system", "content": system_prompt},
@@ -143,20 +151,22 @@ def llm_chat_premium(
 
     if settings.github_pat:
         try:
-            return _call_provider(
+            content = _call_provider(
                 url=GITHUB_MODELS_URL,
                 api_key=settings.github_pat,
-                model=settings.github_model,
+                model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 timeout=90.0,
             )
+            return content, model
         except ProviderError as e:
-            logger.warning("GitHub Models failed (%s), falling back to standard cascade.", e)
+            logger.warning("GitHub Models (%s) failed (%s), falling back to standard cascade.", model, e)
 
     # Fallback: use the standard Groq -> HF cascade
-    return llm_chat_messages(messages, temperature=temperature, max_tokens=max_tokens)
+    content = llm_chat_messages(messages, temperature=temperature, max_tokens=max_tokens)
+    return content, "standard"
 
 
 def _call_provider(

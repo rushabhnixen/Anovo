@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import create_tables
 from routers import (
-    chat, cowriter, document, grammar, humanize,
+    admin, chat, cowriter, document, grammar, humanize,
     paraphrase, plagiarism, summarize, tone, translate,
 )
 from routers import auth, history
@@ -53,6 +53,7 @@ app.include_router(tone.router)
 app.include_router(cowriter.router)
 app.include_router(chat.router)
 app.include_router(document.router)
+app.include_router(admin.router)
 app.include_router(auth.router)
 app.include_router(history.router)
 

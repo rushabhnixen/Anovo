@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
-import { detectTone, ToneScore } from "@/lib/api";
+import { detectTone, saveHistory, ToneScore } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function TonePage() {
   const [inputText, setInputText] = useState("");
@@ -10,6 +11,7 @@ export default function TonePage() {
   const [primaryTone, setPrimaryTone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const { token } = useAuth();
 
   const handleDetect = async () => {
     if (!inputText.trim()) return;
@@ -20,6 +22,7 @@ export default function TonePage() {
       const res = await detectTone(inputText);
       setTones(res.tones);
       setPrimaryTone(res.primary_tone);
+      if (token) saveHistory(token, "tone", inputText, `Primary: ${res.primary_tone}`).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {

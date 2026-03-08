@@ -7,13 +7,14 @@ from typing import Optional
 class ParaphraseRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
-    premium: bool = Field(False, description="Use premium model (requires auth + premium account)")
+    model: str = Field("standard", description="Model to use: 'standard' or a GitHub Models model name")
 
 
 class ParaphraseResponse(BaseModel):
     original: str
     paraphrased: str
     intensity: int
+    model_used: str = "standard"
 
 
 # ── Grammar ─────────────────────────────────────────────────────────────────
@@ -71,13 +72,14 @@ class TranslateResponse(BaseModel):
 
 class HumanizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to humanize")
-    premium: bool = Field(False, description="Use premium model (requires auth + premium account)")
+    model: str = Field("standard", description="Model to use: 'standard' or a GitHub Models model name")
 
 
 class HumanizeResponse(BaseModel):
     original: str
     humanized: str
     steps: Optional[dict] = None
+    model_used: str = "standard"
 
 
 # ── Plagiarism Checker ───────────────────────────────────────────────────────
@@ -166,6 +168,7 @@ class UserResponse(BaseModel):
     username: str
     email: str
     is_premium: bool = False
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -190,3 +193,17 @@ class HistoryEntryResponse(BaseModel):
     created_at: str
 
     model_config = {"from_attributes": True}
+
+
+# ── Admin ───────────────────────────────────────────────────────────────────
+
+class AdminUserUpdate(BaseModel):
+    is_premium: Optional[bool] = None
+    is_admin: Optional[bool] = None
+
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    premium_users: int
+    admin_users: int
+    total_history_entries: int

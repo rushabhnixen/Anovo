@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import TextToSpeech from "./TextToSpeech";
 
 interface OutputDisplayProps {
@@ -15,8 +16,17 @@ export default function OutputDisplay({
   loading = false,
   className = "",
 }: OutputDisplayProps) {
-  const copyToClipboard = () => {
-    if (text) navigator.clipboard.writeText(text);
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async () => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may fail in insecure context — silently ignore */
+    }
   };
 
   return (
@@ -26,9 +36,13 @@ export default function OutputDisplay({
         {text && (
           <button
             onClick={copyToClipboard}
-            className="text-xs px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            className={`text-xs px-2 py-1 rounded-md transition-colors ${
+              copied
+                ? "bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
           >
-            Copy
+            {copied ? "Copied!" : "Copy"}
           </button>
         )}
       </div>

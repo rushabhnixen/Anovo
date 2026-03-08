@@ -5,8 +5,7 @@ Uses LLM (Groq / HF Inference) for high-quality humanization when available.
 Processes large texts by chunking into paragraphs and humanizing each chunk
 separately, then reassembling. Falls back to a local pipeline otherwise.
 
-Premium mode uses GitHub Models (Meta-Llama-3.1-405B-Instruct) for superior
-rewriting quality.
+Premium mode uses GitHub Models for superior rewriting quality.
 """
 from __future__ import annotations
 
@@ -17,24 +16,30 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
-# Approximate character limit per chunk — keeps each LLM call under token limits
-_CHUNK_CHAR_LIMIT = 2500
+# Approximate character limit per chunk
+_CHUNK_CHAR_LIMIT = 3500
 
 
 def humanize(text: str) -> dict:
     """Transform AI-generated text into natural, human-sounding writing."""
     try:
-        return _humanize_llm(text)
+        result = _humanize_llm(text)
+        result["model_used"] = "standard"
+        return result
     except RuntimeError:
-        return _humanize_pipeline(text)
+        result = _humanize_pipeline(text)
+        result["model_used"] = "standard"
+        return result
 
 
-def humanize_premium(text: str) -> dict:
-    """Humanize using the premium 405B model."""
+def humanize_premium(text: str, model: str = "Meta-Llama-3.1-405B-Instruct") -> dict:
+    """Humanize using a premium GitHub Models model."""
     try:
-        return _humanize_llm_premium(text)
+        return _humanize_llm_premium(text, model)
     except RuntimeError:
-        return _humanize_llm(text)
+        result = _humanize_llm(text)
+        result["model_used"] = "standard"
+        return result
 
 
 def _split_into_chunks(text: str) -> list[str]:
@@ -59,15 +64,21 @@ def _split_into_chunks(text: str) -> list[str]:
     return chunks if chunks else [text]
 
 
-_SYSTEM_PROMPT = """You are a skilled ghostwriter. Rewrite AI-generated text so it sounds naturally human-written.
+_SYSTEM_PROMPT = """You are a skilled ghostwriter. Rewrite AI-generated text so it reads as naturally human-written prose.
 
-KEY RULES:
-- Vary sentence length: mix short (3-6 words), medium, and long sentences. Never start 3+ sentences the same way.
-- Use everyday words and contractions (don't, it's, can't). Avoid stiff academic language (utilize, facilitate, commence) and AI-signature phrases (delve, crucial, landscape, comprehensive, leverage, robust, cutting-edge).
-- Add personality: mild opinions, dashes, asides, occasional rhetorical questions or informal transitions (Thing is, Basically, So, Now, Honestly).
-- Vary paragraph length. Some 1-2 sentences, some longer. Don't follow rigid templates.
-- Preserve all facts and arguments. Do NOT add information or meta-commentary.
-- Return ONLY the rewritten text. Keep roughly the same length (within 15%)."""
+RULES:
+1. Match the register and formality of the original. If the input is academic, keep it academic but less robotic. If it's casual, stay casual.
+2. Vary sentence length: mix short punchy sentences with longer flowing ones. Never start 3+ consecutive sentences the same way.
+3. Use everyday words and contractions (don't, it's, can't). Replace AI-signature words: delve → explore/dig into, utilize → use, facilitate → help, commence → start, comprehensive → thorough, leverage → use, robust → strong, cutting-edge → latest.
+4. Add subtle human touches: the occasional dash, an aside in parentheses, a rhetorical question, or a transition like "Thing is," or "Now," — but don't overdo it.
+5. Vary paragraph length. Some short (1-2 sentences), some longer.
+6. Preserve ALL facts, arguments, and structure. Do NOT add new information or meta-commentary.
+7. Return ONLY the rewritten text. Keep roughly the same length (within 15%).
+
+EXAMPLE:
+Input: "Artificial intelligence has commenced a comprehensive transformation of the healthcare landscape, leveraging cutting-edge algorithms to facilitate more robust diagnostic capabilities."
+Output: "AI is reshaping healthcare in a big way. Modern algorithms are making diagnostics sharper and more reliable — and we're really just getting started."
+"""
 
 
 def _humanize_llm(text: str) -> dict:
@@ -76,10 +87,21 @@ def _humanize_llm(text: str) -> dict:
     return _process_chunks(text, llm_chat)
 
 
-def _humanize_llm_premium(text: str) -> dict:
+def _humanize_llm_premium(text: str, model: str) -> dict:
     from services.llm_client import llm_chat_premium
 
-    return _process_chunks(text, llm_chat_premium)
+    def _chat_fn(system_prompt, user_prompt, temperature, max_tokens):
+        content, model_used = llm_chat_premium(
+            system_prompt, user_prompt, model=model,
+            temperature=temperature, max_tokens=max_tokens,
+        )
+        _chat_fn._model_used = model_used
+        return content
+
+    _chat_fn._model_used = "standard"
+    result = _process_chunks(text, _chat_fn)
+    result["model_used"] = _chat_fn._model_used
+    return result
 
 
 def _process_chunks(text: str, chat_fn) -> dict:
@@ -90,7 +112,7 @@ def _process_chunks(text: str, chat_fn) -> dict:
         result = chat_fn(
             system_prompt=_SYSTEM_PROMPT,
             user_prompt=f"Rewrite this text to sound completely human-written:\n\n{chunks[0]}",
-            temperature=0.7,
+            temperature=0.75,
             max_tokens=4096,
         )
         return {"humanized": result, "steps": None}
@@ -105,7 +127,7 @@ def _process_chunks(text: str, chat_fn) -> dict:
                 f"This is section {i + 1} of {len(chunks)} — maintain a consistent "
                 f"voice throughout:\n\n{chunk}"
             ),
-            temperature=0.7,
+            temperature=0.75,
             max_tokens=4096,
         )
         humanized_parts.append(part)

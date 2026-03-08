@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
-import { checkGrammar, GrammarError } from "@/lib/api";
+import { checkGrammar, saveHistory, GrammarError } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 interface HighlightedTextProps {
   text: string;
@@ -52,6 +53,7 @@ export default function GrammarPage() {
   const [loading, setLoading] = useState(false);
   const [checked, setChecked] = useState(false);
   const [apiError, setApiError] = useState("");
+  const { token } = useAuth();
 
   const handleCheck = async () => {
     if (!inputText.trim()) return;
@@ -62,6 +64,10 @@ export default function GrammarPage() {
       const res = await checkGrammar(inputText, language);
       setErrors(res.errors);
       setChecked(true);
+      if (token) {
+        const summary = res.errors.length === 0 ? "No errors found" : `${res.errors.length} issues found`;
+        saveHistory(token, "grammar", inputText, summary).catch(() => {});
+      }
     } catch (e) {
       setApiError((e as Error).message);
     } finally {

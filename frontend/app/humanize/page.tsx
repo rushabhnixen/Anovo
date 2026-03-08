@@ -3,18 +3,19 @@
 import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import OutputDisplay from "@/components/OutputDisplay";
-import PremiumToggle from "@/components/PremiumToggle";
-import { humanizeText } from "@/lib/api";
+import ModelSelector from "@/components/ModelSelector";
+import { humanizeText, saveHistory } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function HumanizePage() {
   const [inputText, setInputText] = useState("");
   const [output, setOutput] = useState("");
+  const [modelUsed, setModelUsed] = useState("");
   const [steps, setSteps] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSteps, setShowSteps] = useState(false);
-  const [premium, setPremium] = useState(false);
+  const [model, setModel] = useState("standard");
   const { token } = useAuth();
 
   const handleHumanize = async () => {
@@ -22,10 +23,13 @@ export default function HumanizePage() {
     setLoading(true);
     setError("");
     setSteps(null);
+    setModelUsed("");
     try {
-      const res = await humanizeText(inputText, premium, token ?? undefined);
+      const res = await humanizeText(inputText, model, token ?? undefined);
       setOutput(res.humanized);
       setSteps(res.steps ?? null);
+      setModelUsed(res.model_used ?? "standard");
+      if (token) saveHistory(token, "humanize", inputText, res.humanized).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -60,7 +64,7 @@ export default function HumanizePage() {
             onChange={setInputText}
             placeholder="Paste AI-generated text to humanize…"
           />
-          <PremiumToggle enabled={premium} onChange={setPremium} />
+          <ModelSelector selectedModel={model} onModelChange={setModel} />
           <button
             onClick={handleHumanize}
             disabled={loading || !inputText.trim()}
@@ -73,6 +77,17 @@ export default function HumanizePage() {
 
         <div className="flex flex-col gap-3">
           <OutputDisplay text={output} label="Humanized Text" loading={loading} />
+
+          {modelUsed && modelUsed !== "standard" && output && (
+            <p className="text-xs text-brand-600 dark:text-brand-400">
+              Processed with {modelUsed}
+            </p>
+          )}
+          {modelUsed === "standard" && model !== "standard" && output && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Premium model unavailable — processed with standard model
+            </p>
+          )}
 
           {steps && (
             <div>

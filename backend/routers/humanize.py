@@ -20,21 +20,21 @@ def humanize_endpoint(
     """
     Transform AI-generated text into more natural, human-sounding writing.
 
-    Set `premium: true` to use the 405B model (requires authentication and premium account).
+    Set `model` to a GitHub Models model name to use premium mode
+    (requires authentication and premium account).
     """
-    use_premium = False
+    use_premium = request.model != "standard"
 
-    if request.premium:
+    if use_premium:
         if not user_id:
             raise HTTPException(status_code=401, detail="Authentication required for premium mode")
         user = get_user_by_id(db, user_id)
         if not user or not user.is_premium:
             raise HTTPException(status_code=403, detail="Premium subscription required")
-        use_premium = True
 
     try:
         if use_premium:
-            result = _humanize_premium(request.text)
+            result = _humanize_premium(request.text, model=request.model)
         else:
             result = _humanize(request.text)
     except Exception as exc:
@@ -44,4 +44,5 @@ def humanize_endpoint(
         original=request.text,
         humanized=result["humanized"],
         steps=result.get("steps"),
+        model_used=result.get("model_used", "standard"),
     )

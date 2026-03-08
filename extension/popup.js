@@ -11,6 +11,7 @@
   const copyBtn = document.getElementById("copy-btn");
   const openBtn = document.getElementById("open-btn");
   const settingsToggle = document.getElementById("settings-toggle");
+  const sidebarToggle = document.getElementById("sidebar-toggle");
   const settingsPanel = document.getElementById("settings-panel");
   const apiUrlInput = document.getElementById("api-url");
   const saveBtn = document.getElementById("save-settings");
@@ -28,6 +29,13 @@
   settingsToggle.addEventListener("click", (e) => {
     e.preventDefault();
     settingsPanel.classList.toggle("visible");
+  });
+
+  // Sidebar toggle
+  sidebarToggle.addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.runtime.sendMessage({ action: "openSidebar" });
+    window.close();
   });
 
   // Save settings
