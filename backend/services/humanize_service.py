@@ -4,6 +4,9 @@ AI Text Humanizer service.
 Uses LLM (Groq / HF Inference) for high-quality humanization when available.
 Processes large texts by chunking into paragraphs and humanizing each chunk
 separately, then reassembling. Falls back to a local pipeline otherwise.
+
+Premium mode uses GitHub Models (Meta-Llama-3.1-405B-Instruct) for superior
+rewriting quality.
 """
 from __future__ import annotations
 
@@ -24,6 +27,14 @@ def humanize(text: str) -> dict:
         return _humanize_llm(text)
     except RuntimeError:
         return _humanize_pipeline(text)
+
+
+def humanize_premium(text: str) -> dict:
+    """Humanize using the premium 405B model."""
+    try:
+        return _humanize_llm_premium(text)
+    except RuntimeError:
+        return _humanize_llm(text)
 
 
 def _split_into_chunks(text: str) -> list[str]:
@@ -48,66 +59,53 @@ def _split_into_chunks(text: str) -> list[str]:
     return chunks if chunks else [text]
 
 
-_SYSTEM_PROMPT = """You are a world-class ghostwriter who specializes in making AI-generated text completely undetectable. Your job is to rewrite text so it reads as if a thoughtful, educated human wrote it naturally — not a language model.
+_SYSTEM_PROMPT = """You are a skilled ghostwriter. Rewrite AI-generated text so it sounds naturally human-written.
 
-Follow these rules STRICTLY:
-
-SENTENCE STRUCTURE:
-- Vary sentence length dramatically. Mix very short sentences (3-6 words) with medium and occasionally long ones.
-- Start sentences differently — never begin 3+ consecutive sentences with the same word or pattern.
-- Use fragments occasionally. Like this. It's natural.
-- Avoid the classic AI pattern of "Topic sentence → 3 supporting sentences → concluding sentence" in every paragraph.
-
-WORD CHOICE:
-- Replace formal/academic vocabulary with everyday equivalents (utilize → use, demonstrate → show, facilitate → help, commence → start, individual → person).
-- Use contractions liberally (don't, it's, we're, can't, wouldn't, they've).
-- Drop unnecessary hedging words AI loves: "It is important to note that", "It is worth mentioning", "In terms of", "It should be noted".
-- Avoid AI-signature phrases: "delve", "crucial", "landscape", "comprehensive", "robust", "leverage", "cutting-edge", "game-changer", "dive in", "not only...but also", "In today's world", "In conclusion".
-
-HUMAN VOICE:
-- Write with mild opinions and personality — humans have viewpoints.
-- Add occasional asides, parentheticals, or dashes for emphasis — like real people do.
-- Use rhetorical questions sparingly but effectively.
-- Include the occasional informal transition: "Thing is,", "Here's the deal:", "So basically,", "Now,", "And honestly,".
-
-PARAGRAPH STRUCTURE:
-- Vary paragraph lengths. Some can be 1-2 sentences. Others might be 4-5.
-- Don't follow a rigid template. Let the writing breathe.
-- Avoid overly smooth transitions between every single paragraph — sometimes humans just jump to the next point.
-
-CRITICAL RULES:
-- Preserve all factual content and key arguments. Do NOT add new information.
-- Do NOT add any meta-commentary, labels, or explanations.
-- Return ONLY the rewritten text — nothing else.
-- The output must be roughly the same length as the input (within 15%)."""
+KEY RULES:
+- Vary sentence length: mix short (3-6 words), medium, and long sentences. Never start 3+ sentences the same way.
+- Use everyday words and contractions (don't, it's, can't). Avoid stiff academic language (utilize, facilitate, commence) and AI-signature phrases (delve, crucial, landscape, comprehensive, leverage, robust, cutting-edge).
+- Add personality: mild opinions, dashes, asides, occasional rhetorical questions or informal transitions (Thing is, Basically, So, Now, Honestly).
+- Vary paragraph length. Some 1-2 sentences, some longer. Don't follow rigid templates.
+- Preserve all facts and arguments. Do NOT add information or meta-commentary.
+- Return ONLY the rewritten text. Keep roughly the same length (within 15%)."""
 
 
 def _humanize_llm(text: str) -> dict:
     from services.llm_client import llm_chat
 
+    return _process_chunks(text, llm_chat)
+
+
+def _humanize_llm_premium(text: str) -> dict:
+    from services.llm_client import llm_chat_premium
+
+    return _process_chunks(text, llm_chat_premium)
+
+
+def _process_chunks(text: str, chat_fn) -> dict:
+    """Shared logic for both free and premium humanization."""
     chunks = _split_into_chunks(text)
 
     if len(chunks) == 1:
-        result = llm_chat(
+        result = chat_fn(
             system_prompt=_SYSTEM_PROMPT,
             user_prompt=f"Rewrite this text to sound completely human-written:\n\n{chunks[0]}",
-            temperature=0.85,
+            temperature=0.7,
             max_tokens=4096,
         )
         return {"humanized": result, "steps": None}
 
-    # Process multiple chunks
     humanized_parts: list[str] = []
     for i, chunk in enumerate(chunks):
         logger.info("Humanizing chunk %d/%d (%d chars)", i + 1, len(chunks), len(chunk))
-        part = llm_chat(
+        part = chat_fn(
             system_prompt=_SYSTEM_PROMPT,
             user_prompt=(
                 f"Rewrite this text to sound completely human-written. "
                 f"This is section {i + 1} of {len(chunks)} — maintain a consistent "
                 f"voice throughout:\n\n{chunk}"
             ),
-            temperature=0.85,
+            temperature=0.7,
             max_tokens=4096,
         )
         humanized_parts.append(part)

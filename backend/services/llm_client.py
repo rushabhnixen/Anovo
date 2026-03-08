@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 HF_URL = "https://router.huggingface.co/v1/chat/completions"
+GITHUB_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
 
 
 class ProviderError(Exception):
@@ -122,6 +123,40 @@ def _rotate_from(start_key: str) -> list[str]:
     except ValueError:
         return list(_groq_keys)
     return _groq_keys[idx:] + _groq_keys[:idx]
+
+
+def llm_chat_premium(
+    system_prompt: str,
+    user_prompt: str,
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+) -> str:
+    """Call the premium model (GitHub Models / Meta-Llama-3.1-405B-Instruct).
+
+    Falls back to the standard Groq/HF cascade if GitHub PAT is not configured
+    or if the call fails.
+    """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
+
+    if settings.github_pat:
+        try:
+            return _call_provider(
+                url=GITHUB_MODELS_URL,
+                api_key=settings.github_pat,
+                model=settings.github_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=90.0,
+            )
+        except ProviderError as e:
+            logger.warning("GitHub Models failed (%s), falling back to standard cascade.", e)
+
+    # Fallback: use the standard Groq -> HF cascade
+    return llm_chat_messages(messages, temperature=temperature, max_tokens=max_tokens)
 
 
 def _call_provider(

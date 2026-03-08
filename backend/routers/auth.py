@@ -1,13 +1,20 @@
 """
-Authentication endpoints: register, login, and current user.
+Authentication endpoints: register, login, current user, and promo code redemption.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db
-from models.schemas import LoginRequest, RegisterRequest, TokenResponse, UserResponse
+from models.schemas import (
+    LoginRequest,
+    PromoCodeRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserResponse,
+)
 from services.auth_service import (
     authenticate_user,
     create_access_token,
@@ -31,6 +38,15 @@ def _current_user_id(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     return user_id
+
+
+def _optional_user_id(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+) -> int | None:
+    """Return user_id if a valid token is present, else None (no error)."""
+    if not credentials:
+        return None
+    return decode_token(credentials.credentials)
 
 
 @router.post("/register", response_model=TokenResponse, summary="Register a new account")
@@ -71,4 +87,34 @@ def me(
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    return UserResponse.model_validate(user)
+
+
+@router.post("/redeem-promo", response_model=UserResponse, summary="Redeem a promo code for premium access")
+def redeem_promo(
+    request: PromoCodeRequest,
+    user_id: int = Depends(_current_user_id),
+    db: Session = Depends(get_db),
+) -> UserResponse:
+    valid_codes = set(
+        c.strip().upper()
+        for c in settings.premium_promo_codes.split(",")
+        if c.strip()
+    )
+    if not valid_codes:
+        raise HTTPException(status_code=404, detail="No promo codes are currently active")
+
+    if request.code.strip().upper() not in valid_codes:
+        raise HTTPException(status_code=400, detail="Invalid promo code")
+
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.is_premium:
+        raise HTTPException(status_code=409, detail="Account is already premium")
+
+    user.is_premium = True
+    db.commit()
+    db.refresh(user)
     return UserResponse.model_validate(user)

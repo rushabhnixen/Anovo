@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     hf_api_token: str = ""
     hf_model: str = "mistralai/Mistral-7B-Instruct-v0.3"
 
+    # GitHub Models (premium tier) — Meta-Llama-3.1-405B-Instruct
+    github_pat: str = ""
+    github_model: str = "Meta-Llama-3.1-405B-Instruct"
+
+    # Premium promo codes (comma-separated)
+    premium_promo_codes: str = ""
+
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3"
 

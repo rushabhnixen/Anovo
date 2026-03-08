@@ -3,7 +3,9 @@
 import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import OutputDisplay from "@/components/OutputDisplay";
+import PremiumToggle from "@/components/PremiumToggle";
 import { humanizeText } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function HumanizePage() {
   const [inputText, setInputText] = useState("");
@@ -12,6 +14,8 @@ export default function HumanizePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showSteps, setShowSteps] = useState(false);
+  const [premium, setPremium] = useState(false);
+  const { token } = useAuth();
 
   const handleHumanize = async () => {
     if (!inputText.trim()) return;
@@ -19,7 +23,7 @@ export default function HumanizePage() {
     setError("");
     setSteps(null);
     try {
-      const res = await humanizeText(inputText);
+      const res = await humanizeText(inputText, premium, token ?? undefined);
       setOutput(res.humanized);
       setSteps(res.steps ?? null);
     } catch (e) {
@@ -56,6 +60,7 @@ export default function HumanizePage() {
             onChange={setInputText}
             placeholder="Paste AI-generated text to humanize…"
           />
+          <PremiumToggle enabled={premium} onChange={setPremium} />
           <button
             onClick={handleHumanize}
             disabled={loading || !inputText.trim()}

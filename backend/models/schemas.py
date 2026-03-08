@@ -7,6 +7,7 @@ from typing import Optional
 class ParaphraseRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
+    premium: bool = Field(False, description="Use premium model (requires auth + premium account)")
 
 
 class ParaphraseResponse(BaseModel):
@@ -70,6 +71,7 @@ class TranslateResponse(BaseModel):
 
 class HumanizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to humanize")
+    premium: bool = Field(False, description="Use premium model (requires auth + premium account)")
 
 
 class HumanizeResponse(BaseModel):
@@ -163,8 +165,13 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    is_premium: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class PromoCodeRequest(BaseModel):
+    code: str = Field(..., min_length=1, max_length=64, description="Promo code to redeem")
 
 
 # ── History ───────────────────────────────────────────────────────────────────

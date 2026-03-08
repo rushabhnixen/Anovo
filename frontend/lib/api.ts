@@ -59,10 +59,33 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function postAuth<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Request failed");
+  }
+
+  return res.json() as Promise<T>;
+}
+
 // ── API calls ─────────────────────────────────────────────────────────────────
 
-export const paraphraseText = (text: string, intensity: number) =>
-  post<ParaphraseResponse>("/api/paraphrase", { text, intensity });
+export const paraphraseText = (text: string, intensity: number, premium = false, token?: string) => {
+  const body = { text, intensity, premium };
+  if (premium && token) {
+    return postAuth<ParaphraseResponse>("/api/paraphrase", body, token);
+  }
+  return post<ParaphraseResponse>("/api/paraphrase", body);
+};
 
 export const checkGrammar = (text: string, language = "en-US") =>
   post<GrammarResponse>("/api/grammar-check", { text, language });
@@ -76,8 +99,13 @@ export const translateText = (
   target_language: string
 ) => post<TranslateResponse>("/api/translate", { text, source_language, target_language });
 
-export const humanizeText = (text: string) =>
-  post<HumanizeResponse>("/api/humanize", { text });
+export const humanizeText = (text: string, premium = false, token?: string) => {
+  const body = { text, premium };
+  if (premium && token) {
+    return postAuth<HumanizeResponse>("/api/humanize", body, token);
+  }
+  return post<HumanizeResponse>("/api/humanize", body);
+};
 
 // ── Phase 2 Types ────────────────────────────────────────────────────────────
 
@@ -140,6 +168,7 @@ export interface UserResponse {
   id: number;
   username: string;
   email: string;
+  is_premium: boolean;
 }
 
 export interface HistoryEntry {
@@ -165,6 +194,9 @@ export const getCurrentUser = (token: string) =>
     if (!res.ok) throw new Error("Not authenticated");
     return res.json() as Promise<UserResponse>;
   });
+
+export const redeemPromoCode = (token: string, code: string) =>
+  postAuth<UserResponse>("/api/auth/redeem-promo", { code }, token);
 
 // ── History API calls ─────────────────────────────────────────────────────────
 

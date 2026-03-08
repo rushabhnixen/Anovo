@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import ThemeToggle from "./ThemeToggle";
+import PromoCodeModal from "./PromoCodeModal";
 import { useAuth } from "@/lib/auth-context";
 
 const navLinks = [
@@ -24,6 +25,7 @@ const navLinks = [
 export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
   const { user, logout } = useAuth();
 
   const linkClass = (href: string) =>
@@ -34,6 +36,7 @@ export default function Navbar() {
     }`;
 
   return (
+    <>
     <nav className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 sticky top-0 z-50">
       <div className="container mx-auto px-4 flex items-center justify-between h-14">
         {/* Logo */}
@@ -52,6 +55,18 @@ export default function Navbar() {
           {/* Auth controls */}
           {user ? (
             <>
+              {user.is_premium ? (
+                <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300">
+                  Premium
+                </span>
+              ) : (
+                <button
+                  onClick={() => setPromoOpen(true)}
+                  className="px-2 py-1 rounded-md text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/50 transition-colors"
+                >
+                  Promo Code
+                </button>
+              )}
               <span className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400">
                 {user.username}
               </span>
@@ -143,5 +158,7 @@ export default function Navbar() {
         </div>
       )}
     </nav>
+    <PromoCodeModal open={promoOpen} onClose={() => setPromoOpen(false)} />
+    </>
   );
 }

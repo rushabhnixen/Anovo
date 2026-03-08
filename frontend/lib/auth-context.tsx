@@ -15,6 +15,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (token: string) => void;
   logout: () => void;
+  refreshUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
   login: () => {},
   logout: () => {},
+  refreshUser: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -42,6 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(() => {
+    if (token) {
+      getCurrentUser(token).then(setUser).catch(() => {});
+    }
+  }, [token]);
+
   useEffect(() => {
     const stored = localStorage.getItem("anovo_token");
     if (stored) {
@@ -59,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
