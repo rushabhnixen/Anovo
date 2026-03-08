@@ -59,4 +59,4 @@ app.include_router(history.router)
 @app.get("/", tags=["health"])
 def health_check() -> dict:
     """Health check endpoint."""
-    return {"status": "ok", "service": "Anovo API", "version": "1.0.0"}
+    return {"status": "ok", "service": "Anovo API", "version": app.version}
