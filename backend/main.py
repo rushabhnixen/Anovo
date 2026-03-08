@@ -60,5 +60,15 @@ app.include_router(history.router)
 
 @app.get("/", tags=["health"])
 def health_check() -> dict:
-    """Health check endpoint."""
-    return {"status": "ok", "service": "Anovo API", "version": app.version}
+    """Health check endpoint with provider diagnostics."""
+    return {
+        "status": "ok",
+        "service": "Anovo API",
+        "version": app.version,
+        "providers": {
+            "groq": bool(settings.groq_api_keys or settings.groq_api_key),
+            "hf": bool(settings.hf_api_token),
+            "github_models": bool(settings.github_pat),
+        },
+        "db": settings.database_url.split("///")[-1] if "sqlite" in settings.database_url else "postgres",
+    }

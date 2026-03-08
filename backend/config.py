@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["http://localhost:3000"]
 
     # Auth & DB
+    # Default uses local file. On HF Spaces, set DATABASE_URL=sqlite:////data/anovo.db
+    # to persist across container restarts (HF mounts /data as persistent volume).
     database_url: str = "sqlite:///./anovo.db"
     jwt_secret_key: str = "change-me-in-production"
     jwt_algorithm: str = "HS256"
