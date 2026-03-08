@@ -16,8 +16,10 @@ class Settings(BaseSettings):
     cowriter_model: str = "distilgpt2"
     max_input_length: int = 1024
 
-    # Chat — Groq (free) is used when groq_api_key is set; falls back to HF / Ollama
-    groq_api_key: str = ""
+    # Groq API — supports multiple keys (comma-separated) for fallback/rotation
+    # e.g. GROQ_API_KEYS=gsk_key1,gsk_key2,gsk_key3,gsk_key4
+    groq_api_key: str = ""       # single key (backward compatible)
+    groq_api_keys: str = ""      # comma-separated list of keys
     groq_model: str = "llama-3.3-70b-versatile"
 
     # HuggingFace Inference API — middle-tier fallback between Groq and local

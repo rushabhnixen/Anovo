@@ -1,13 +1,19 @@
 """
-Unified LLM client with graceful fallback: Groq -> HF Inference API.
+Unified LLM client with graceful fallback: Groq (multi-key) -> HF Inference API.
 
 Every LLM-powered service should call llm_chat() instead of groq_chat()
 directly.  If all remote providers fail, a RuntimeError is raised and the
 caller is responsible for falling back to local models.
+
+Groq key rotation: set GROQ_API_KEYS=key1,key2,key3,key4 (comma-separated).
+Each request picks the next key round-robin so rate limits are spread evenly.
+If a key fails, the next key is tried before moving to HF fallback.
 """
 from __future__ import annotations
 
+import itertools
 import logging
+import threading
 
 import httpx
 
@@ -21,6 +27,21 @@ HF_URL = "https://router.huggingface.co/v1/chat/completions"
 
 class ProviderError(Exception):
     """A single provider failed; the cascade should try the next one."""
+
+
+def _build_groq_keys() -> list[str]:
+    """Collect all configured Groq keys, deduped, preserving order."""
+    keys: list[str] = []
+    if settings.groq_api_keys:
+        keys.extend(k.strip() for k in settings.groq_api_keys.split(",") if k.strip())
+    if settings.groq_api_key and settings.groq_api_key not in keys:
+        keys.append(settings.groq_api_key)
+    return keys
+
+
+_groq_keys = _build_groq_keys()
+_groq_cycle = itertools.cycle(_groq_keys) if _groq_keys else None
+_groq_lock = threading.Lock()
 
 
 def llm_chat(
@@ -45,21 +66,29 @@ def llm_chat_messages(
     """Full messages API.  Used by chat_service.py (which builds history)."""
     errors: list[str] = []
 
-    # 1. Try Groq
-    if settings.groq_api_key:
-        try:
-            return _call_provider(
-                url=GROQ_URL,
-                api_key=settings.groq_api_key,
-                model=settings.groq_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=30.0,
-            )
-        except ProviderError as e:
-            logger.warning("Groq failed (%s), trying next provider.", e)
-            errors.append(f"Groq: {e}")
+    # 1. Try Groq keys (round-robin, try all before giving up)
+    if _groq_keys:
+        with _groq_lock:
+            start_key = next(_groq_cycle)  # type: ignore[arg-type]
+        keys_to_try = _rotate_from(start_key)
+        for i, key in enumerate(keys_to_try):
+            try:
+                return _call_provider(
+                    url=GROQ_URL,
+                    api_key=key,
+                    model=settings.groq_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=30.0,
+                )
+            except ProviderError as e:
+                masked = f"{key[:8]}...{key[-4:]}"
+                logger.warning(
+                    "Groq key %d/%d (%s) failed: %s",
+                    i + 1, len(keys_to_try), masked, e,
+                )
+                errors.append(f"Groq[{masked}]: {e}")
 
     # 2. Try HuggingFace Inference API
     if settings.hf_api_token:
@@ -81,9 +110,18 @@ def llm_chat_messages(
     detail = (
         "; ".join(errors)
         if errors
-        else "No LLM provider configured (set GROQ_API_KEY or HF_API_TOKEN)"
+        else "No LLM provider configured (set GROQ_API_KEYS or HF_API_TOKEN)"
     )
     raise RuntimeError(f"All LLM providers failed. {detail}")
+
+
+def _rotate_from(start_key: str) -> list[str]:
+    """Return all Groq keys starting from start_key (for trying all on failure)."""
+    try:
+        idx = _groq_keys.index(start_key)
+    except ValueError:
+        return list(_groq_keys)
+    return _groq_keys[idx:] + _groq_keys[:idx]
 
 
 def _call_provider(
