@@ -10,9 +10,13 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 _is_sqlite = settings.database_url.startswith("sqlite")
-_engine_kwargs: dict = {}
+_engine_kwargs: dict = {
+    "pool_pre_ping": True,  # test connections before reuse (fixes Neon idle drops)
+}
 if _is_sqlite:
     _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    _engine_kwargs["pool_recycle"] = 300  # recycle connections every 5 min
 
 engine = create_engine(settings.database_url, **_engine_kwargs)
 
