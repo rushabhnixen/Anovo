@@ -29,6 +29,11 @@ GITHUB_MODELS_AVAILABLE = [
     "gpt-4o",
     "gpt-4o-mini",
     "Meta-Llama-3.1-405B-Instruct",
+    "Llama-3.3-70B-Instruct",
+    "Meta-Llama-3.1-8B-Instruct",
+    "Phi-4",
+    "DeepSeek-R1",
+    "Cohere-command-r-plus-08-2024",
 ]
 
 

@@ -7,6 +7,11 @@ const MODELS = [
   { value: "gpt-4o", label: "GPT-4o" },
   { value: "gpt-4o-mini", label: "GPT-4o Mini" },
   { value: "Meta-Llama-3.1-405B-Instruct", label: "Llama 405B" },
+  { value: "Llama-3.3-70B-Instruct", label: "Llama 3.3 70B" },
+  { value: "Meta-Llama-3.1-8B-Instruct", label: "Llama 8B (Fast)" },
+  { value: "Phi-4", label: "Phi-4 (Microsoft)" },
+  { value: "DeepSeek-R1", label: "DeepSeek R1" },
+  { value: "Cohere-command-r-plus-08-2024", label: "Cohere Command R+" },
 ];
 
 interface ModelSelectorProps {
