@@ -32,7 +32,6 @@ const navGroups = [
     items: [
       { label: "Chat", href: "/chat" },
       { label: "Upload Doc", href: "/upload" },
-      { label: "History", href: "/history" },
       { label: "API Docs", href: "/api-docs" },
     ],
   },

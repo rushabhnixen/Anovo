@@ -60,7 +60,7 @@ Anovo/
 ├── frontend/
 │   ├── package.json
 │   ├── .env.example
-│   ├── app/                  # Next.js App Router pages (19 pages)
+│   ├── app/                  # Next.js App Router pages (18 pages)
 │   │   ├── page.tsx          # Homepage
 │   │   ├── humanize/page.tsx    # Model selector + model_used display
 │   │   ├── paraphrase/page.tsx  # Model selector + model_used display
@@ -72,7 +72,6 @@ Anovo/
 │   │   ├── cowriter/page.tsx
 │   │   ├── chat/page.tsx
 │   │   ├── upload/page.tsx      # Side-by-side comparison + download
-│   │   ├── history/page.tsx
 │   │   ├── admin/page.tsx       # Admin dashboard (user management, stats)
 │   │   ├── login/page.tsx
 │   │   ├── register/page.tsx
@@ -87,7 +86,7 @@ Anovo/
 │   │   ├── PromoCodeModal.tsx   # Promo code redemption modal
 │   │   └── ThemeToggle.tsx      # Dark/light mode toggle
 │   └── lib/
-│       ├── api.ts            # All API calls (tools, auth, history, admin, doc upload/download)
+│       ├── api.ts            # All API calls (tools, auth, admin, doc upload/download)
 │       └── auth-context.tsx  # React auth context (JWT, user state with is_admin)
 └── extension/
     ├── manifest.json         # Manifest V3 + sidePanel permission
@@ -102,7 +101,7 @@ Anovo/
 
 ---
 
-## API Endpoints (27 routes)
+## API Endpoints (24 routes)
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -122,13 +121,10 @@ Anovo/
 | POST | `/api/auth/login` | No | Login, returns JWT (auto-admin promotion) |
 | GET | `/api/auth/me` | Yes | Get current user info (includes is_premium, is_admin) |
 | POST | `/api/auth/redeem-promo` | Yes | Redeem promo code for premium |
-| GET | `/api/history` | Yes | List history entries |
-| POST | `/api/history` | Yes | Save history entry |
-| DELETE | `/api/history/{id}` | Yes | Delete history entry |
 | GET | `/api/admin/users` | Admin | Paginated user list with search |
 | PATCH | `/api/admin/users/{id}` | Admin | Toggle user premium/admin status |
-| DELETE | `/api/admin/users/{id}` | Admin | Delete user and their history |
-| GET | `/api/admin/stats` | Admin | Dashboard stats (users, premium, admin, history count) |
+| DELETE | `/api/admin/users/{id}` | Admin | Delete user |
+| GET | `/api/admin/stats` | Admin | Dashboard stats (users, premium, admin counts) |
 
 Interactive docs: `https://rushabh13-anovo-api.hf.space/docs`
 

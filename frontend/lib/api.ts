@@ -212,14 +212,6 @@ export interface UserResponse {
   is_admin: boolean;
 }
 
-export interface HistoryEntry {
-  id: number;
-  tool: string;
-  input_text: string;
-  output_text: string;
-  created_at: string;
-}
-
 // ── Auth API calls ────────────────────────────────────────────────────────────
 
 export const registerUser = (username: string, email: string, password: string) =>
@@ -233,14 +225,6 @@ export const getCurrentUser = (token: string) =>
 
 export const redeemPromoCode = (token: string, code: string) =>
   postAuth<UserResponse>("/api/auth/redeem-promo", { code }, token);
-
-// ── History API calls ─────────────────────────────────────────────────────────
-
-export const getHistory = (token: string, limit = 50): Promise<HistoryEntry[]> =>
-  getAuth<HistoryEntry[]>(`/api/history?limit=${limit}`, token);
-
-export const deleteHistoryEntry = (token: string, id: number): Promise<void> =>
-  deleteAuth(`/api/history/${id}`, token);
 
 // ── Document Upload ─────────────────────────────────────────────────────────
 

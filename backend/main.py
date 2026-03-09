@@ -9,7 +9,7 @@ from routers import (
     admin, chat, cowriter, document, grammar, humanize,
     paraphrase, plagiarism, summarize, tone, translate,
 )
-from routers import auth, history
+from routers import auth
 
 
 @asynccontextmanager
@@ -24,7 +24,7 @@ app = FastAPI(
         "AI-Powered Writing Tool API — Free & Open Source\n\n"
         "Endpoints for paraphrasing, grammar checking, summarization, "
         "translation, AI text humanization, plagiarism detection, "
-        "tone analysis, co-writing, AI chat, user accounts, and history."
+        "tone analysis, co-writing, AI chat, and user accounts."
     ),
     version="2.0.0",
     docs_url="/docs",
@@ -55,7 +55,6 @@ app.include_router(chat.router)
 app.include_router(document.router)
 app.include_router(admin.router)
 app.include_router(auth.router)
-app.include_router(history.router)
 
 
 @app.get("/", tags=["health"])
