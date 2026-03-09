@@ -12,7 +12,6 @@ export default function PlagiarismPage() {
   const [threshold, setThreshold] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const handleCheck = async () => {
     if (!inputText.trim() || !referenceText.trim()) return;
     setLoading(true);

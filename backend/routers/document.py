@@ -27,7 +27,11 @@ class DocDownloadRequest(BaseModel):
     filename: str
 
 
-@router.post("/upload-doc", response_model=DocProcessResponse, summary="Upload a Word doc and humanize or paraphrase it")
+@router.post(
+    "/upload-doc",
+    response_model=DocProcessResponse,
+    summary="Upload a Word doc and humanize or paraphrase it",
+)
 async def upload_doc(
     file: UploadFile = File(...),
     mode: str = Form("humanize"),

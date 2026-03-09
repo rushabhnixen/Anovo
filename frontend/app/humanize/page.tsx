@@ -4,7 +4,7 @@ import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import OutputDisplay from "@/components/OutputDisplay";
 import ModelSelector from "@/components/ModelSelector";
-import { humanizeText, saveHistory } from "@/lib/api";
+import { humanizeText } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function HumanizePage() {
@@ -29,7 +29,6 @@ export default function HumanizePage() {
       setOutput(res.humanized);
       setSteps(res.steps ?? null);
       setModelUsed(res.model_used ?? "standard");
-      if (token) saveHistory(token, "humanize", inputText, res.humanized).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {

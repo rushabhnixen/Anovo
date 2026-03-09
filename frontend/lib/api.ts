@@ -239,14 +239,6 @@ export const redeemPromoCode = (token: string, code: string) =>
 export const getHistory = (token: string, limit = 50): Promise<HistoryEntry[]> =>
   getAuth<HistoryEntry[]>(`/api/history?limit=${limit}`, token);
 
-export const saveHistory = (
-  token: string,
-  tool: string,
-  input_text: string,
-  output_text: string,
-): Promise<HistoryEntry> =>
-  postAuth<HistoryEntry>("/api/history", { tool, input_text, output_text }, token);
-
 export const deleteHistoryEntry = (token: string, id: number): Promise<void> =>
   deleteAuth(`/api/history/${id}`, token);
 

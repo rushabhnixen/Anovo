@@ -9,7 +9,7 @@
 | Layer | Tech | Hosting | URL |
 |-------|------|---------|-----|
 | Frontend | Next.js 15, React 18, TailwindCSS 3 | Vercel | https://anovo-frontend.vercel.app (auto-deploys from `main`) |
-| Backend | FastAPI 0.111, Python 3.11, SQLite | HuggingFace Spaces (Docker) | https://rushabh13-anovo-api.hf.space |
+| Backend | FastAPI 0.111, Python 3.11, PostgreSQL (Neon) | HuggingFace Spaces (Docker) | https://rushabh13-anovo-api.hf.space |
 | Chrome Extension | Manifest V3 (Side Panel API) | Local / Chrome Web Store | Load from `extension/` folder |
 | Source Code | Git | GitHub | https://github.com/rushabhnixen/Anovo |
 
@@ -62,13 +62,13 @@ Anovo/
 │   ├── .env.example
 │   ├── app/                  # Next.js App Router pages (19 pages)
 │   │   ├── page.tsx          # Homepage
-│   │   ├── humanize/page.tsx    # Model selector + model_used display + saveHistory
-│   │   ├── paraphrase/page.tsx  # Model selector + model_used display + saveHistory
-│   │   ├── grammar/page.tsx     # saveHistory on success
-│   │   ├── summarize/page.tsx   # saveHistory on success
-│   │   ├── translate/page.tsx   # saveHistory on success
+│   │   ├── humanize/page.tsx    # Model selector + model_used display
+│   │   ├── paraphrase/page.tsx  # Model selector + model_used display
+│   │   ├── grammar/page.tsx
+│   │   ├── summarize/page.tsx
+│   │   ├── translate/page.tsx
 │   │   ├── plagiarism/page.tsx
-│   │   ├── tone/page.tsx        # saveHistory on success
+│   │   ├── tone/page.tsx
 │   │   ├── cowriter/page.tsx
 │   │   ├── chat/page.tsx
 │   │   ├── upload/page.tsx      # Side-by-side comparison + download
@@ -80,11 +80,10 @@ Anovo/
 │   ├── components/
 │   │   ├── Navbar.tsx           # 3 dropdown groups + Admin link for admins
 │   │   ├── NavDropdown.tsx      # Click-to-toggle dropdown with outside-click-to-close
-│   │   ├── ModelSelector.tsx    # Premium model dropdown (5 models)
+│   │   ├── ModelSelector.tsx    # Premium model dropdown (9 options: Standard + 8 premium)
 │   │   ├── TextEditor.tsx       # TipTap rich text editor
 │   │   ├── OutputDisplay.tsx    # Copy button with "Copied!" feedback
 │   │   ├── SynonymSlider.tsx
-│   │   ├── PremiumToggle.tsx    # Legacy toggle (replaced by ModelSelector)
 │   │   ├── PromoCodeModal.tsx   # Promo code redemption modal
 │   │   └── ThemeToggle.tsx      # Dark/light mode toggle
 │   └── lib/
@@ -145,11 +144,11 @@ Interactive docs: `https://rushabh13-anovo-api.hf.space/docs`
 | `GROQ_API_KEYS` | Yes | Comma-separated Groq API keys for rotation (e.g. `gsk_a,gsk_b,gsk_c,gsk_d`) |
 | `GROQ_API_KEY` | No | Single Groq key (backward compat, `GROQ_API_KEYS` preferred) |
 | `HF_API_TOKEN` | No | HuggingFace Inference API token (fallback if Groq fails) |
-| `GITHUB_PAT` | For premium | GitHub **classic** Personal Access Token (must start with `ghp_`). Fine-grained tokens do NOT work. No scopes needed. |
+| `GITHUB_PAT` | For premium | GitHub Personal Access Token. Classic tokens (`ghp_`) work with no scopes. Fine-grained tokens require `models:read` under Account permissions. |
 | `GITHUB_MODEL` | No | Default premium model (default: `Meta-Llama-3.1-405B-Instruct`) |
 | `PREMIUM_PROMO_CODES` | For premium | Comma-separated promo codes (e.g. `LAUNCH2024,BETAUSER`) |
 | `ADMIN_EMAILS` | For admin | Comma-separated emails that auto-become admin on register/login (e.g. `you@example.com`) |
-| `DATABASE_URL` | No | Default: `sqlite:///./anovo.db`. On HF Spaces, Dockerfile sets `sqlite:////data/anovo.db` for persistence. |
+| `DATABASE_URL` | Recommended | Default: `sqlite:///./anovo.db`. For production, use a PostgreSQL connection string (e.g., Neon free tier: `postgresql://user:pass@host/db?sslmode=require`). |
 | `GROQ_MODEL` | No | Default: `llama-3.3-70b-versatile` |
 | `CORS_ORIGINS` | No | JSON array of allowed origins. Default: `["http://localhost:3000"]`. Vercel/HF are auto-allowed by regex. |
 
@@ -178,13 +177,17 @@ GitHub Models API (user-selected model)
       → RuntimeError if all fail
 ```
 
-**Available Premium Models:**
-| Model ID | Display Name |
-|----------|-------------|
-| `gpt-4o` | GPT-4o |
-| `Meta-Llama-3.1-405B-Instruct` | Llama 405B |
-| `Mistral-large-2407` | Mistral Large |
-| `Meta-Llama-3.1-70B-Instruct` | Llama 70B |
+**Available Premium Models (verified working):**
+| Model ID | Display Name | Provider |
+|----------|-------------|----------|
+| `gpt-4o` | GPT-4o | OpenAI |
+| `gpt-4o-mini` | GPT-4o Mini | OpenAI |
+| `Meta-Llama-3.1-405B-Instruct` | Llama 405B | Meta |
+| `Llama-3.3-70B-Instruct` | Llama 3.3 70B | Meta |
+| `Meta-Llama-3.1-8B-Instruct` | Llama 8B (Fast) | Meta |
+| `Phi-4` | Phi-4 | Microsoft |
+| `DeepSeek-R1` | DeepSeek R1 | DeepSeek |
+| `Cohere-command-r-plus-08-2024` | Cohere Command R+ | Cohere |
 
 GitHub Models endpoint: `https://models.inference.ai.azure.com/chat/completions`
 
@@ -195,7 +198,7 @@ GitHub Models endpoint: `https://models.inference.ai.azure.com/chat/completions`
 ## Model Selector System
 
 1. User registers, logs in, redeems promo code → `is_premium = true`
-2. Humanize and Paraphrase pages show `ModelSelector` dropdown with 5 options
+2. Humanize and Paraphrase pages show `ModelSelector` dropdown with 9 options (Standard + 8 premium)
 3. Frontend sends `{ "text": "...", "model": "gpt-4o" }` with `Authorization` header
 4. Backend validates: `model != "standard"` → requires authenticated premium user
 5. Backend calls `llm_chat_premium()` → tries GitHub Models API with selected model
@@ -228,24 +231,31 @@ GET  /api/admin/stats  → {total_users, premium_users, admin_users, total_histo
 
 ---
 
-## Database Persistence (HF Spaces)
+## Database Persistence
 
-**Problem:** HF Spaces Docker containers have ephemeral filesystems. SQLite at `./anovo.db` is lost on every rebuild/restart.
+**Problem:** HF Spaces Docker containers have ephemeral filesystems. SQLite at `./anovo.db` is lost on every rebuild/restart. HF persistent storage (`/data` volume) requires a paid PRO subscription.
 
-**Solution:** The Dockerfile sets `ENV DATABASE_URL=sqlite:////data/anovo.db`. HF Spaces provides `/data` as persistent storage.
+**Solution:** Use an external PostgreSQL database. **Neon** (https://neon.tech) provides a generous free tier.
 
-**IMPORTANT:** You must enable persistent storage in your HF Space settings:
-1. Go to https://huggingface.co/spaces/rushabh13/anovo-api/settings
-2. Scroll to "Persistent storage"
-3. Enable it (free tier gives a small volume)
+### Setup with Neon PostgreSQL
+1. Create a free account at https://neon.tech
+2. Create a new project and database
+3. Copy the connection string (looks like `postgresql://user:pass@ep-xxx.region.aws.neon.tech/dbname?sslmode=require`)
+4. Add it as `DATABASE_URL` in HF Space secrets
+5. The backend auto-detects PostgreSQL vs SQLite and configures the engine accordingly
 
-Without persistent storage enabled, `/data` still exists but is NOT persistent across restarts.
+### Connection handling
+`database.py` handles both SQLite and PostgreSQL:
+- **`pool_pre_ping=True`** — detects stale/dropped connections before reuse (essential for Neon which drops idle connections)
+- **`pool_recycle=300`** — refreshes connections every 5 minutes (prevents Neon idle timeout errors)
+- **Conditional `connect_args`** — `check_same_thread=False` only applied for SQLite, not PostgreSQL
 
 ### Auto-migration
 `database.py` includes `_auto_migrate()` that runs on every startup:
 - Inspects existing `users` table columns
 - Adds missing columns (`is_premium`, `is_admin`) via `ALTER TABLE`
-- This means schema changes are applied automatically without data loss
+- Uses correct boolean defaults per engine: `'FALSE'` for PostgreSQL, `'0'` for SQLite
+- Schema changes are applied automatically without data loss
 
 ---
 
@@ -255,7 +265,7 @@ Without persistent storage enabled, `/data` still exists but is NOT persistent a
 - **Side Panel** (Quillbot-style sidebar) via Chrome Side Panel API
 - **6 tools:** Humanize, Paraphrase, Grammar, Summarize, Translate, Tone
 - **Auth:** Login form in sidebar, token stored in `chrome.storage.local`
-- **Model selector:** Visible for premium users, same 5 models as web
+- **Model selector:** Visible for premium users, same 9 models as web
 - **Context menu:** Right-click selected text → Anovo submenu → choose tool
 - **Configurable API URL:** Settings section at bottom of sidebar
 
@@ -348,8 +358,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN mkdir -p /data
-ENV DATABASE_URL=sqlite:////data/anovo.db
 EXPOSE 7860
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
 ```
@@ -358,11 +366,12 @@ CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
 - `JWT_SECRET_KEY`
 - `GROQ_API_KEYS` (comma-separated)
 - `HF_API_TOKEN`
-- `GITHUB_PAT` (classic token starting with `ghp_`)
+- `GITHUB_PAT` (classic `ghp_` token or fine-grained with `models:read`)
 - `PREMIUM_PROMO_CODES` (e.g. `LAUNCH2024,BETAUSER`)
 - `ADMIN_EMAILS` (e.g. `you@example.com`)
+- `DATABASE_URL` (Neon PostgreSQL connection string, e.g. `postgresql://user:pass@ep-xxx.neon.tech/db?sslmode=require`)
 
-**IMPORTANT:** Enable persistent storage in Space settings, otherwise the DB is still lost on restart.
+**IMPORTANT:** Set `DATABASE_URL` to a Neon PostgreSQL connection string in Space secrets. Without it, SQLite is used and data is lost on every restart.
 
 HF Space URL: `https://rushabh13-anovo-api.hf.space`
 
@@ -382,7 +391,7 @@ Hit `GET /` to verify the API is running and providers are configured:
     "hf": false,
     "github_models": true
   },
-  "db": "/data/anovo.db"
+  "db": "postgres"
 }
 ```
 
@@ -399,7 +408,7 @@ If `github_models: false`, the `GITHUB_PAT` secret is not reaching the app (chec
 
 - **Password hashing:** `passlib[bcrypt]` with `bcrypt==4.0.1`
 - **Token format:** JWT (HS256), 7-day expiry
-- **Storage:** SQLite (persistent at `/data/anovo.db` on HF Spaces)
+- **Storage:** PostgreSQL (Neon) in production, SQLite for local dev
 - **User model fields:** `id`, `username`, `email`, `hashed_password`, `is_premium`, `is_admin`, `created_at`
 - **Frontend:** JWT stored in localStorage via `auth-context.tsx`
 - **Admin auto-promotion:** Users whose email matches `ADMIN_EMAILS` are auto-promoted to admin on register and login
@@ -414,9 +423,8 @@ If `github_models: false`, the `GITHUB_PAT` secret is not reaching the app (chec
 - **Humanize temperature:** 0.75 (slightly higher for more natural variation)
 - **Humanize prompt features:** Tone preservation, concrete before/after example, AI-word replacement list (delve→explore, utilize→use, etc.)
 - **CORS:** Allows `*.vercel.app` and `*.hf.space` via regex, plus explicit origins in `CORS_ORIGINS`.
-- **Database:** SQLite by default. Set `DATABASE_URL` to a PostgreSQL connection string for production scale.
+- **Database:** SQLite by default for local dev. PostgreSQL (Neon free tier) for production on HF Spaces. Configured via `DATABASE_URL` env var.
 - **Groq key rotation:** Keys are rotated round-robin per request via `llm_client.py`. If a key is rate-limited, the next key is tried.
-- **History auto-save:** All 6 tool pages (humanize, paraphrase, grammar, summarize, translate, tone) save to history after successful processing when user is logged in.
 - **Copy feedback:** Copy button shows "Copied!" with green styling for 2 seconds.
 - **Navbar:** 3 dropdown groups (Writing Tools, Analysis, More) + Admin link when admin.
 
@@ -452,12 +460,17 @@ Get free keys at https://console.groq.com. The free tier allows multiple keys. A
 
 ## GitHub PAT (for Premium Models)
 
-1. https://github.com/settings/tokens → **Generate new token (classic)** (NOT fine-grained)
-2. No special scopes needed — GitHub Models access is available to all GitHub users
+**Option A — Classic token (simplest):**
+1. https://github.com/settings/tokens → **Generate new token (classic)**
+2. No special scopes needed
 3. Copy the `ghp_...` token and add as `GITHUB_PAT` in HF Space secrets
-4. Verify: `curl -s https://rushabh13-anovo-api.hf.space/` should show `"github_models": true`
 
-**Important:** Fine-grained tokens do NOT work with GitHub Models API. You must use a classic token.
+**Option B — Fine-grained token:**
+1. https://github.com/settings/tokens?type=beta → **Generate new token**
+2. Under **Account permissions**, set `Models` → `Read`
+3. Copy the token and add as `GITHUB_PAT` in HF Space secrets
+
+**Verify:** `curl -s https://rushabh13-anovo-api.hf.space/` should show `"github_models": true`
 
 ---
 
@@ -467,12 +480,13 @@ Get free keys at https://console.groq.com. The free tier allows multiple keys. A
 1. Check health endpoint: `curl https://rushabh13-anovo-api.hf.space/` — is `github_models: true`?
 2. If `false`: GITHUB_PAT secret is missing or empty in HF Space settings
 3. If `true`: Check HF Space logs for the exact error (e.g., `HTTP 401: Bad credentials`)
-4. Ensure PAT is a **classic** token (starts with `ghp_`), not fine-grained
+4. If using a classic token, ensure it starts with `ghp_`. If using fine-grained token, ensure `models:read` is enabled under Account permissions
 
 ### "Have to sign up every time"
-1. Persistent storage must be enabled on the HF Space
-2. Go to Space Settings → Persistent storage → Enable
-3. After enabling, the DB file at `/data/anovo.db` will survive rebuilds
+1. This means the database is being lost between restarts
+2. Use an external PostgreSQL database (Neon free tier) instead of SQLite
+3. Set `DATABASE_URL` to your Neon connection string in HF Space secrets
+4. Verify by checking `GET /` — `db` field should show `"postgres"` not a file path
 
 ### "Admin link not showing"
 1. Your email must be in `ADMIN_EMAILS` secret on HF Space
@@ -480,10 +494,10 @@ Get free keys at https://console.groq.com. The free tier allows multiple keys. A
 3. After login, the `/api/auth/me` response should show `is_admin: true`
 4. Refresh the page if you just configured `ADMIN_EMAILS`
 
-### "History not showing"
-1. You must be logged in when using a tool for history to save
-2. History is saved automatically after successful processing
-3. Check the History page (`/history`) — entries appear after each operation
+### "SSL connection has been closed unexpectedly" (Neon PostgreSQL)
+1. This happens when Neon drops idle connections
+2. The fix is already in `database.py`: `pool_pre_ping=True` and `pool_recycle=300`
+3. If this error persists, restart the HF Space to reset the connection pool
 
 ---
 
@@ -494,7 +508,7 @@ If handing this project to someone else, they need:
 - [ ] Access to the GitHub repo (https://github.com/rushabhnixen/Anovo)
 - [ ] Vercel account connected to the repo (or transfer project)
 - [ ] HuggingFace account with the Space (https://huggingface.co/spaces/rushabh13/anovo-api)
-- [ ] Persistent storage enabled on HF Space
+- [ ] Neon PostgreSQL database (free at https://neon.tech), connection string set as `DATABASE_URL`
 - [ ] At least 1 Groq API key (free at https://console.groq.com)
 - [ ] (Optional) HuggingFace API token for fallback
 - [ ] (Optional) GitHub classic PAT for premium tier

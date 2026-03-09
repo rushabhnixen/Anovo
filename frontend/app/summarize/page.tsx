@@ -3,8 +3,7 @@
 import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import OutputDisplay from "@/components/OutputDisplay";
-import { summarizeText, saveHistory } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { summarizeText } from "@/lib/api";
 
 export default function SummarizePage() {
   const [inputText, setInputText] = useState("");
@@ -13,8 +12,6 @@ export default function SummarizePage() {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { token } = useAuth();
-
   const handleSummarize = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
@@ -22,7 +19,6 @@ export default function SummarizePage() {
     try {
       const res = await summarizeText(inputText, mode, maxLength);
       setOutput(res.summary);
-      if (token) saveHistory(token, "summarize", inputText, res.summary).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {

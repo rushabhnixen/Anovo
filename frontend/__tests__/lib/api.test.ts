@@ -41,7 +41,7 @@ describe("API library", () => {
     const result = await paraphraseText("text", 3);
     expect(mockFetch).toHaveBeenCalledWith(`${BASE}/api/paraphrase`, expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ text: "text", intensity: 3 }),
+      body: JSON.stringify({ text: "text", intensity: 3, model: "standard" }),
     }));
     expect(result).toEqual(expected);
   });
@@ -72,7 +72,7 @@ describe("API library", () => {
     mockSuccess({ original: "text", humanized: "human text" });
     await humanizeText("text");
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body).toEqual({ text: "text" });
+    expect(body).toEqual({ text: "text", model: "standard" });
   });
 
   it("checkPlagiarism posts both texts", async () => {

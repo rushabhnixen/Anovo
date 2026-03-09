@@ -12,8 +12,6 @@ from __future__ import annotations
 import logging
 import re
 
-from config import settings
-
 logger = logging.getLogger(__name__)
 
 # Approximate character limit per chunk
@@ -64,21 +62,34 @@ def _split_into_chunks(text: str) -> list[str]:
     return chunks if chunks else [text]
 
 
-_SYSTEM_PROMPT = """You are a skilled ghostwriter. Rewrite AI-generated text so it reads as naturally human-written prose.
-
-RULES:
-1. Match the register and formality of the original. If the input is academic, keep it academic but less robotic. If it's casual, stay casual.
-2. Vary sentence length: mix short punchy sentences with longer flowing ones. Never start 3+ consecutive sentences the same way.
-3. Use everyday words and contractions (don't, it's, can't). Replace AI-signature words: delve → explore/dig into, utilize → use, facilitate → help, commence → start, comprehensive → thorough, leverage → use, robust → strong, cutting-edge → latest.
-4. Add subtle human touches: the occasional dash, an aside in parentheses, a rhetorical question, or a transition like "Thing is," or "Now," — but don't overdo it.
-5. Vary paragraph length. Some short (1-2 sentences), some longer.
-6. Preserve ALL facts, arguments, and structure. Do NOT add new information or meta-commentary.
-7. Return ONLY the rewritten text. Keep roughly the same length (within 15%).
-
-EXAMPLE:
-Input: "Artificial intelligence has commenced a comprehensive transformation of the healthcare landscape, leveraging cutting-edge algorithms to facilitate more robust diagnostic capabilities."
-Output: "AI is reshaping healthcare in a big way. Modern algorithms are making diagnostics sharper and more reliable — and we're really just getting started."
-"""
+_SYSTEM_PROMPT = (  # noqa: E501
+    "You are a skilled ghostwriter. Rewrite AI-generated text so it reads "
+    "as naturally human-written prose.\n\n"
+    "RULES:\n"
+    "1. Match the register and formality of the original. If the input is "
+    "academic, keep it academic but less robotic. If it's casual, stay casual.\n"
+    "2. Vary sentence length: mix short punchy sentences with longer flowing "
+    "ones. Never start 3+ consecutive sentences the same way.\n"
+    "3. Use everyday words and contractions (don't, it's, can't). Replace "
+    "AI-signature words: delve -> explore/dig into, utilize -> use, "
+    "facilitate -> help, commence -> start, comprehensive -> thorough, "
+    "leverage -> use, robust -> strong, cutting-edge -> latest.\n"
+    "4. Add subtle human touches: the occasional dash, an aside in "
+    "parentheses, a rhetorical question, or a transition like 'Thing is,' "
+    "or 'Now,' -- but don't overdo it.\n"
+    "5. Vary paragraph length. Some short (1-2 sentences), some longer.\n"
+    "6. Preserve ALL facts, arguments, and structure. Do NOT add new "
+    "information or meta-commentary.\n"
+    "7. Return ONLY the rewritten text. Keep roughly the same length "
+    "(within 15%).\n\n"
+    "EXAMPLE:\n"
+    'Input: "Artificial intelligence has commenced a comprehensive '
+    "transformation of the healthcare landscape, leveraging cutting-edge "
+    'algorithms to facilitate more robust diagnostic capabilities."\n'
+    'Output: "AI is reshaping healthcare in a big way. Modern algorithms '
+    "are making diagnostics sharper and more reliable -- and we're really "
+    'just getting started."'
+)
 
 
 def _humanize_llm(text: str) -> dict:

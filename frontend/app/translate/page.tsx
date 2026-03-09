@@ -4,8 +4,7 @@ import { useState } from "react";
 import TextEditor from "@/components/TextEditor";
 import OutputDisplay from "@/components/OutputDisplay";
 import LanguageSelector from "@/components/LanguageSelector";
-import { translateText, saveHistory } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
+import { translateText } from "@/lib/api";
 
 export default function TranslatePage() {
   const [inputText, setInputText] = useState("");
@@ -14,8 +13,6 @@ export default function TranslatePage() {
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { token } = useAuth();
-
   const handleTranslate = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
@@ -23,7 +20,6 @@ export default function TranslatePage() {
     try {
       const res = await translateText(inputText, sourceLang, targetLang);
       setOutput(res.translated);
-      if (token) saveHistory(token, "translate", inputText, res.translated).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {

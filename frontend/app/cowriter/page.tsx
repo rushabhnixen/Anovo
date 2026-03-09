@@ -11,7 +11,6 @@ export default function CoWriterPage() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const handleGenerate = async () => {
     if (!inputText.trim()) return;
     setLoading(true);

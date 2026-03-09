@@ -5,8 +5,6 @@ Uses LLM (Groq / HF Inference) when available; falls back to Helsinki-NLP OpusMT
 """
 from __future__ import annotations
 
-from config import settings
-
 # Map language codes to full names for better LLM prompts
 LANG_NAMES: dict[str, str] = {
     "af": "Afrikaans", "ar": "Arabic", "bg": "Bulgarian", "bn": "Bengali",

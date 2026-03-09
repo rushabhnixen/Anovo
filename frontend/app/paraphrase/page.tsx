@@ -5,7 +5,7 @@ import TextEditor from "@/components/TextEditor";
 import SynonymSlider from "@/components/SynonymSlider";
 import OutputDisplay from "@/components/OutputDisplay";
 import ModelSelector from "@/components/ModelSelector";
-import { paraphraseText, saveHistory } from "@/lib/api";
+import { paraphraseText } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
 export default function ParaphrasePage() {
@@ -27,7 +27,6 @@ export default function ParaphrasePage() {
       const res = await paraphraseText(inputText, intensity, model, token ?? undefined);
       setOutput(res.paraphrased);
       setModelUsed(res.model_used ?? "standard");
-      if (token) saveHistory(token, "paraphrase", inputText, res.paraphrased).catch(() => {});
     } catch (e) {
       setError((e as Error).message);
     } finally {
