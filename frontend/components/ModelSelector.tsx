@@ -5,9 +5,8 @@ import { useAuth } from "@/lib/auth-context";
 const MODELS = [
   { value: "standard", label: "Standard (Groq)" },
   { value: "gpt-4o", label: "GPT-4o" },
+  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
   { value: "Meta-Llama-3.1-405B-Instruct", label: "Llama 405B" },
-  { value: "Mistral-large-2407", label: "Mistral Large" },
-  { value: "Meta-Llama-3.1-70B-Instruct", label: "Llama 70B" },
 ];
 
 interface ModelSelectorProps {

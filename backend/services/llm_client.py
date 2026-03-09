@@ -26,10 +26,9 @@ HF_URL = "https://router.huggingface.co/v1/chat/completions"
 GITHUB_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
 
 GITHUB_MODELS_AVAILABLE = [
-    "Meta-Llama-3.1-405B-Instruct",
     "gpt-4o",
-    "Mistral-large-2407",
-    "Meta-Llama-3.1-70B-Instruct",
+    "gpt-4o-mini",
+    "Meta-Llama-3.1-405B-Instruct",
 ]
 
 
