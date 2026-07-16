@@ -1,5 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ParaphraseResponse {
@@ -73,7 +80,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(err.detail ?? "Request failed", res.status);
   }
 
   return res.json() as Promise<T>;
@@ -151,21 +158,80 @@ export const paraphraseText = (
   return post<ParaphraseResponse>("/api/paraphrase", body);
 };
 
-export const refineParaphrase = (
+function parseSuggestionList(raw: string, selectedText: string, count: number) {
+  const selected = selectedText.trim().toLocaleLowerCase().replace(/[.!?]+$/, "");
+  const suggestions: string[] = [];
+
+  for (const line of raw.split(/\r?\n/)) {
+    const value = line
+      .replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "")
+      .trim()
+      .replace(/^["“”']+|["“”']+$/g, "");
+    const comparable = value.toLocaleLowerCase().replace(/[.!?]+$/, "");
+    if (!value || comparable === selected) continue;
+    if (!suggestions.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) {
+      suggestions.push(value);
+    }
+    if (suggestions.length === count) break;
+  }
+
+  return suggestions;
+}
+
+function legacyRefinePrompt(
+  text: string,
+  selectedText: string,
+  kind: "sentence" | "word",
+  writingMode: ParaphraseMode,
+  intensity: number,
+  count: number,
+) {
+  // The legacy chat endpoint accepts at most 2,000 characters. Keep the
+  // selected text and the closest surrounding context inside that limit.
+  const contextBudget = Math.max(300, 1500 - selectedText.length);
+  const selectionIndex = text.indexOf(selectedText);
+  const contextStart = Math.max(0, selectionIndex - Math.floor(contextBudget / 2));
+  const context = text.slice(contextStart, contextStart + contextBudget);
+
+  if (kind === "word") {
+    return `Return only a numbered list of ${count} distinct replacement words or short phrases. Each option must fit the exact grammar, tense, number, meaning, and ${writingMode} tone of the selected word. Do not repeat it and do not explain.\nSelected word: ${selectedText}\nContext: ${context}`.slice(0, 1950);
+  }
+
+  return `Return only a numbered list of ${count} complete sentence rewrites. Preserve every fact, name, number, qualification, citation, and negation, and keep a ${writingMode} tone. Use change level ${intensity} of 5. Do not explain.\nSelected sentence: ${selectedText}\nContext: ${context}`.slice(0, 1950);
+}
+
+export const refineParaphrase = async (
   text: string,
   selectedText: string,
   kind: "sentence" | "word",
   writingMode: ParaphraseMode,
   intensity: number,
   count = 5,
-) => post<ParaphraseRefineResponse>("/api/paraphrase/refine", {
-  text,
-  selected_text: selectedText,
-  kind,
-  writing_mode: writingMode,
-  intensity,
-  count,
-});
+) => {
+  try {
+    return await post<ParaphraseRefineResponse>("/api/paraphrase/refine", {
+      text,
+      selected_text: selectedText,
+      kind,
+      writing_mode: writingMode,
+      intensity,
+      count,
+    });
+  } catch (error) {
+    // The production Space can temporarily lag behind the auto-deployed
+    // frontend. Its existing chat route provides a compatible AI fallback.
+    if (!(error instanceof ApiError) || error.status !== 404) throw error;
+
+    const response = await post<ChatResponse>("/api/chat", {
+      message: legacyRefinePrompt(text, selectedText, kind, writingMode, intensity, count),
+      mode: writingMode === "academic" ? "academic" : writingMode === "creative" ? "creative" : "general",
+      history: [],
+    });
+    const suggestions = parseSuggestionList(response.reply, selectedText, count);
+    if (!suggestions.length) throw new Error("No distinct alternatives were returned");
+    return { selected_text: selectedText, kind, suggestions };
+  }
+};
 
 export const checkGrammar = (text: string, language = "en-US") =>
   post<GrammarResponse>("/api/grammar-check", { text, language });

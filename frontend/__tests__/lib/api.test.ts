@@ -61,6 +61,24 @@ describe("API library", () => {
     });
   });
 
+  it("falls back to the legacy chat route when refine is not deployed", async () => {
+    mockFailure(404, "Not Found");
+    mockSuccess({ reply: "1. Swift\n2. Rapid\n3. Speedy", mode: "general" });
+
+    const result = await refineParaphrase(
+      "The quick fox runs.",
+      "quick",
+      "word",
+      "standard",
+      3,
+      3,
+    );
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[1][0]).toBe(`${BASE}/api/chat`);
+    expect(result.suggestions).toEqual(["Swift", "Rapid", "Speedy"]);
+  });
+
   it("checkGrammar defaults to en-US language", async () => {
     mockSuccess({ original: "text", errors: [], error_count: 0 });
     await checkGrammar("text");

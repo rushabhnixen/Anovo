@@ -129,7 +129,9 @@ def _paraphrase_with_fn(text: str, intensity: int, chat_fn, writing_mode: str = 
                 f"Text to paraphrase:\n{chunk}\n\nParaphrased version:"
             ),
             temperature=0.4 + (intensity - 1) * 0.15,
-            max_tokens=4096,
+            # A chunk is capped at 3,500 characters, so 2,048 tokens leaves
+            # ample room while avoiding an unnecessarily large generation cap.
+            max_tokens=2048,
         )
         parts.append(part)
 
@@ -204,7 +206,9 @@ def refine_selection(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         temperature=0.35 if kind == "word" else 0.65,
-        max_tokens=600 if kind == "word" else 1400,
+        # Alternatives are short. Smaller caps reduce provider latency and
+        # prevent verbose models from continuing past the requested list.
+        max_tokens=180 if kind == "word" else 600,
     )
     return _parse_suggestions(raw, selected_text, count)
 
