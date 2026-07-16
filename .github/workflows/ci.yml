@@ -54,7 +54,7 @@ jobs:
           cache-dependency-path: backend/requirements.txt
 
       - name: Install dependencies
-        run: pip install fastapi uvicorn pydantic pydantic-settings httpx requests pytest pytest-asyncio sqlalchemy "passlib[bcrypt]" "python-jose[cryptography]" python-multipart
+        run: pip install fastapi uvicorn pydantic pydantic-settings httpx requests pytest pytest-asyncio sqlalchemy "passlib[bcrypt]" "python-jose[cryptography]" python-multipart python-docx
 
       - name: Run tests
         run: pytest tests/ -v --tb=short
