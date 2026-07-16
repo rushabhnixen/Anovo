@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Literal, Optional
 
 
 # ── Paraphrase ──────────────────────────────────────────────────────────────
@@ -8,6 +8,10 @@ class ParaphraseRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
     model: str = Field("standard", description="Model to use: 'standard' or a GitHub Models model name")
+    writing_mode: Literal[
+        "standard", "fluency", "formal", "simple", "creative",
+        "academic", "expand", "shorten", "humanize",
+    ] = Field("standard", description="Writing style for the paraphrase")
 
 
 class ParaphraseResponse(BaseModel):
@@ -15,6 +19,25 @@ class ParaphraseResponse(BaseModel):
     paraphrased: str
     intensity: int
     model_used: str = "standard"
+    writing_mode: str = "standard"
+
+
+class ParaphraseRefineRequest(BaseModel):
+    text: str = Field(..., min_length=1, max_length=10000, description="Full paraphrased text for context")
+    selected_text: str = Field(..., min_length=1, max_length=2000, description="Selected sentence or word")
+    kind: Literal["sentence", "word"]
+    writing_mode: Literal[
+        "standard", "fluency", "formal", "simple", "creative",
+        "academic", "expand", "shorten", "humanize",
+    ] = "standard"
+    intensity: int = Field(3, ge=1, le=5)
+    count: int = Field(5, ge=2, le=8)
+
+
+class ParaphraseRefineResponse(BaseModel):
+    selected_text: str
+    kind: str
+    suggestions: list[str]
 
 
 # ── Grammar ─────────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@
 ### Phase 1 (Current)
 | # | Feature | Status |
 |---|---------|--------|
-| 1 | **Paraphraser** — Rewrite text using T5/PEGASUS | ✅ |
+| 1 | **Paraphraser** — 9 writing modes with contextual sentence and word alternatives | ✅ |
 | 2 | **Synonym Slider** — Control paraphrase intensity (1–5) | ✅ |
 | 3 | **Grammar Checker** — LanguageTool integration with inline highlights | ✅ |
 | 4 | **Summarizer** — BART/PEGASUS summarization (paragraph & bullet) | ✅ |
@@ -125,6 +125,7 @@ Once the backend is running, visit:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/paraphrase` | Paraphrase text with intensity control |
+| POST | `/api/paraphrase/refine` | Suggest contextual alternatives for a sentence or word |
 | POST | `/api/grammar-check` | Check grammar, spelling, and punctuation |
 | POST | `/api/summarize` | Summarize text (paragraph or bullet mode) |
 | POST | `/api/translate` | Translate between 100+ languages |

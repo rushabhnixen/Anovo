@@ -31,16 +31,20 @@ class TestHealth:
 
 class TestParaphrase:
     def test_paraphrase_success(self):
-        with patch("routers.paraphrase._paraphrase", return_value="A quick fox leapt over a lazy dog."):
+        with patch(
+            "routers.paraphrase._paraphrase",
+            return_value=("A quick fox leapt over a lazy dog.", "standard"),
+        ):
             response = client.post("/api/paraphrase", json={"text": "The quick brown fox jumps over the lazy dog.", "intensity": 3})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["original"] == "The quick brown fox jumps over the lazy dog."
         assert data["paraphrased"] == "A quick fox leapt over a lazy dog."
         assert data["intensity"] == 3
+        assert data["writing_mode"] == "standard"
 
     def test_paraphrase_intensity_bounds(self):
-        with patch("routers.paraphrase._paraphrase", return_value="result"):
+        with patch("routers.paraphrase._paraphrase", return_value=("result", "standard")):
             r1 = client.post("/api/paraphrase", json={"text": "Hello world.", "intensity": 1})
             r5 = client.post("/api/paraphrase", json={"text": "Hello world.", "intensity": 5})
         assert r1.status_code == 200
@@ -58,6 +62,25 @@ class TestParaphrase:
         with patch("routers.paraphrase._paraphrase", side_effect=RuntimeError("model unavailable")):
             response = client.post("/api/paraphrase", json={"text": "Hello.", "intensity": 3})
         assert response.status_code == 500
+
+    def test_contextual_refine_options(self):
+        with patch(
+            "routers.paraphrase._refine_selection",
+            return_value=["Clear writing makes ideas easier to share.", "Good prose communicates ideas clearly."],
+        ):
+            response = client.post(
+                "/api/paraphrase/refine",
+                json={
+                    "text": "Good writing helps people communicate ideas clearly.",
+                    "selected_text": "Good writing helps people communicate ideas clearly.",
+                    "kind": "sentence",
+                    "writing_mode": "fluency",
+                    "intensity": 3,
+                    "count": 2,
+                },
+            )
+        assert response.status_code == 200
+        assert len(response.json()["suggestions"]) == 2
 
 
 # ── Grammar ───────────────────────────────────────────────────────────────────
