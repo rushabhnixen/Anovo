@@ -6,6 +6,7 @@ All service calls are mocked so no ML models or external services are required.
 import sys
 import os
 from unittest.mock import patch
+from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 
 # Ensure the backend directory is on the path when running from backend/
@@ -14,6 +15,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from main import app  # noqa: E402
 
 client = TestClient(app)
+
+
+class TestAccountDeletion:
+    def test_delete_account_removes_user_and_commits(self):
+        from routers.auth import delete_me
+
+        db = MagicMock()
+        user = MagicMock()
+        with patch("routers.auth.get_user_by_id", return_value=user):
+            delete_me(user_id=42, db=db)
+
+        db.delete.assert_called_once_with(user)
+        db.commit.assert_called_once_with()
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

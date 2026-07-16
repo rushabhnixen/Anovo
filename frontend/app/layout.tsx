@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import MobileRuntime from "@/components/MobileRuntime";
 import { AuthProvider } from "@/lib/auth-context";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default function RootLayout({
         <AuthProvider>
           <Navbar />
           <main className="container mx-auto px-4 py-8">{children}</main>
+          <MobileRuntime />
         </AuthProvider>
       </body>
     </html>

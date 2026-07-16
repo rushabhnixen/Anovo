@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Anovo</string>
+    <string name="title_activity_main">Anovo</string>
+    <string name="package_name">com.soniqinfotech.anovo</string>
+    <string name="custom_url_scheme">com.soniqinfotech.anovo</string>
+</resources>

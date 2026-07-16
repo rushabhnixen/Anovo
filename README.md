@@ -42,6 +42,7 @@
 | **AI Chat/Modes** | Llama 3 / Mistral 7B (via Ollama) |
 | **Hosting** | HuggingFace Spaces (backend) + Vercel (frontend) |
 | **CI/CD** | GitHub Actions |
+| **Mobile** | Capacitor 8 (Android + iOS) |
 
 ---
 
@@ -102,6 +103,18 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### 3b. Mobile apps
+
+The Android and iOS projects live in `frontend/android` and `frontend/ios`. Build and sync the bundled mobile frontend with:
+
+```bash
+cd frontend
+npm run mobile:sync
+npm run mobile:assets
+```
+
+See [MOBILE_APP.md](MOBILE_APP.md) for native prerequisites, signing, store metadata, privacy declarations, and publishing steps.
 
 ### 4. Docker Setup (LanguageTool + Backend)
 ```bash

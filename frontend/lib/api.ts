@@ -329,6 +329,9 @@ export const loginUser = (email: string, password: string) =>
 export const getCurrentUser = (token: string) =>
   getAuth<UserResponse>("/api/auth/me", token);
 
+export const deleteCurrentUser = (token: string) =>
+  deleteAuth("/api/auth/me", token);
+
 export const redeemPromoCode = (token: string, code: string) =>
   postAuth<UserResponse>("/api/auth/redeem-promo", { code }, token);
 
