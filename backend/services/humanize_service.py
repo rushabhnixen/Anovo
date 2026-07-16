@@ -166,7 +166,7 @@ def _quality_issues(source: str, draft: str) -> list[str]:
 
     if len(source) >= 120:
         length_ratio = len(draft) / len(source)
-        if length_ratio < 0.70:
+        if length_ratio < 0.55:
             issues.append("too much source content was removed")
         elif length_ratio > 1.35:
             issues.append("the draft added unnecessary wording")
