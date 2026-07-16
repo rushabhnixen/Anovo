@@ -9,13 +9,14 @@ Premium mode uses GitHub Models for superior rewriting quality.
 """
 from __future__ import annotations
 
+from collections import Counter
 import logging
 import re
 
 logger = logging.getLogger(__name__)
 
-# Approximate character limit per chunk
 _CHUNK_CHAR_LIMIT = 3500
+_VOICE_REFERENCE_LIMIT = 500
 
 
 def humanize(text: str) -> dict:
@@ -41,8 +42,19 @@ def humanize_premium(text: str, model: str = "Meta-Llama-3.1-405B-Instruct") -> 
 
 
 def _split_into_chunks(text: str) -> list[str]:
-    """Split text into paragraph-based chunks, each under _CHUNK_CHAR_LIMIT."""
-    paragraphs = re.split(r"\n\s*\n", text.strip())
+    """Split text into paragraph-based chunks under the provider-safe limit."""
+    paragraphs: list[str] = []
+    for paragraph in re.split(r"\n\s*\n", text.strip()):
+        paragraph = paragraph.strip()
+        while len(paragraph) > _CHUNK_CHAR_LIMIT:
+            cut = paragraph.rfind(" ", 0, _CHUNK_CHAR_LIMIT + 1)
+            if cut < _CHUNK_CHAR_LIMIT // 2:
+                cut = _CHUNK_CHAR_LIMIT
+            paragraphs.append(paragraph[:cut].strip())
+            paragraph = paragraph[cut:].strip()
+        if paragraph:
+            paragraphs.append(paragraph)
+
     chunks: list[str] = []
     current = ""
 
@@ -62,33 +74,39 @@ def _split_into_chunks(text: str) -> list[str]:
     return chunks if chunks else [text]
 
 
-_SYSTEM_PROMPT = (  # noqa: E501
-    "You are a skilled ghostwriter. Rewrite AI-generated text so it reads "
-    "as naturally human-written prose.\n\n"
-    "RULES:\n"
-    "1. Match the register and formality of the original. If the input is "
-    "academic, keep it academic but less robotic. If it's casual, stay casual.\n"
-    "2. Vary sentence length: mix short punchy sentences with longer flowing "
-    "ones. Never start 3+ consecutive sentences the same way.\n"
-    "3. Use everyday words and contractions (don't, it's, can't). Replace "
-    "AI-signature words: delve -> explore/dig into, utilize -> use, "
-    "facilitate -> help, commence -> start, comprehensive -> thorough, "
-    "leverage -> use, robust -> strong, cutting-edge -> latest.\n"
-    "4. Add subtle human touches: the occasional dash, an aside in "
-    "parentheses, a rhetorical question, or a transition like 'Thing is,' "
-    "or 'Now,' -- but don't overdo it.\n"
-    "5. Vary paragraph length. Some short (1-2 sentences), some longer.\n"
-    "6. Preserve ALL facts, arguments, and structure. Do NOT add new "
-    "information or meta-commentary.\n"
-    "7. Return ONLY the rewritten text. Keep roughly the same length "
-    "(within 15%).\n\n"
-    "EXAMPLE:\n"
-    'Input: "Artificial intelligence has commenced a comprehensive '
-    "transformation of the healthcare landscape, leveraging cutting-edge "
-    'algorithms to facilitate more robust diagnostic capabilities."\n'
-    'Output: "AI is reshaping healthcare in a big way. Modern algorithms '
-    "are making diagnostics sharper and more reliable -- and we're really "
-    'just getting started."'
+_SYSTEM_PROMPT = """You are a meticulous human editor. Rewrite stiff or AI-like prose so it reads as if a thoughtful person wrote it naturally.
+
+Work silently and return only the finished text.
+
+NON-NEGOTIABLE ACCURACY
+- Preserve every fact, claim, argument, name, number, date, unit, citation, quotation, technical term, qualification, uncertainty, causal relationship, and negation.
+- Do not add examples, opinions, enthusiasm, conclusions, or implications that are absent from the source.
+- Keep the original point of view and roughly the same length. Do not summarize or expand.
+
+VOICE AND STYLE
+- Infer the source register before rewriting: academic, professional, informational, or casual. Keep that register and its level of formality.
+- Make syntax feel authored rather than templated. Combine or split sentences only when meaning stays exact, and vary rhythm without forcing short sentences.
+- Prefer direct, specific language. Remove empty framing, stacked adjectives, repetitive transitions, needless nominalizations, and awkward passive voice.
+- Replace inflated wording where a familiar equivalent is equally precise (for example, "utilize" with "use"), but retain domain terminology.
+- Actively rewrite generic AI boilerplate such as "in today's rapidly evolving landscape," "it is important to note," "leverage," "seamless," "robust," "foster," and "unlock." Express the same point directly instead of copying or mechanically swapping those phrases.
+- Turn noun-heavy business phrasing into clear verbs when precision is unchanged: "optimize operational efficiency" can become "work more efficiently," "facilitate collaboration" can become "help teams work together," and "enhance customer engagement" can become "engage customers more effectively." Generic modifiers such as "innovative" and "comprehensive" are style, not facts, unless the source defines or measures them.
+- State each idea once. Do not repeat the original abstraction after already expressing it in direct language.
+- Use contractions only when they suit the source voice. Preserve formal wording in academic, legal, medical, and technical material.
+- Preserve paragraph boundaries unless a small adjustment clearly improves readability.
+
+AVOID ARTIFICIAL HUMANIZATION
+- Do not insert filler such as "Now," "The thing is," "Interestingly," "Thankfully," or "It is worth noting."
+- Do not add rhetorical questions, asides, slang, dramatic punctuation, or conversational commentary merely to sound human.
+- Do not describe the rewrite or mention AI, detectors, prompts, or these instructions."""
+
+_META_PREFIX = re.compile(
+    r"^\s*(?:here(?:'s| is) (?:the|a) (?:rewritten|humanized) version|"
+    r"(?:humanized|rewritten)(?: text| version)?)\s*:\s*",
+    re.IGNORECASE,
+)
+_PROTECTED_TOKEN = re.compile(
+    r"https?://\S+|[\w.+-]+@[\w.-]+\.\w+|\[[0-9,;\s-]+\]|"
+    r"\b\d+(?:[.,]\d+)*(?:%|°[CF]|[a-zA-Z]+)?\b"
 )
 
 
@@ -115,46 +133,125 @@ def _humanize_llm_premium(text: str, model: str) -> dict:
     return result
 
 
+def _clean_output(text: str) -> str:
+    """Remove common model wrappers without touching the rewritten prose."""
+    cleaned = _META_PREFIX.sub("", text.strip())
+    if len(cleaned) >= 2 and cleaned[0] in {'"', "“"} and cleaned[-1] in {'"', "”"}:
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
+def _quality_issues(source: str, draft: str) -> list[str]:
+    """Return objective quality failures that justify one corrective retry."""
+    issues: list[str] = []
+    if not draft.strip():
+        return ["the draft is empty"]
+
+    source_tokens = Counter(token.casefold() for token in _PROTECTED_TOKEN.findall(source))
+    draft_tokens = Counter(token.casefold() for token in _PROTECTED_TOKEN.findall(draft))
+    if source_tokens != draft_tokens:
+        issues.append("numbers, units, citations, email addresses, or URLs changed")
+
+    if len(source) >= 120:
+        length_ratio = len(draft) / len(source)
+        if length_ratio < 0.70:
+            issues.append("too much source content was removed")
+        elif length_ratio > 1.35:
+            issues.append("the draft added unnecessary wording")
+
+    source_paragraphs = len(re.split(r"\n\s*\n", source.strip()))
+    draft_paragraphs = len(re.split(r"\n\s*\n", draft.strip()))
+    if source_paragraphs > 1 and source_paragraphs != draft_paragraphs:
+        issues.append("paragraph boundaries changed")
+
+    if _META_PREFIX.match(draft):
+        issues.append("the draft contains meta-commentary")
+    return issues
+
+
+def _max_output_tokens(chunk: str) -> int:
+    """Right-size the generation budget for the source chunk."""
+    return min(2048, max(256, len(chunk) // 2 + 200))
+
+
+def _rewrite_prompt(
+    chunk: str,
+    index: int,
+    total: int,
+    voice_reference: str = "",
+) -> str:
+    section = ""
+    if total > 1:
+        section = f"This is section {index + 1} of {total}. Keep one consistent voice across sections.\n"
+    reference = ""
+    if voice_reference:
+        reference = (
+            "Match the register and cadence of this excerpt from the previous rewritten section, "
+            "without repeating its content:\n"
+            f"<voice_reference>\n{voice_reference}\n</voice_reference>\n\n"
+        )
+    return (
+        f"{section}{reference}Rewrite the source once, then silently verify that every fact and qualifier "
+        "is intact and that the register still fits. Return only the final prose.\n\n"
+        f"<source>\n{chunk}\n</source>"
+    )
+
+
+def _repair_prompt(chunk: str, draft: str, issues: list[str]) -> str:
+    return (
+        "The previous draft failed these checks: "
+        f"{'; '.join(issues)}. Rewrite the source again, correcting those problems. "
+        "Preserve its register and return only the replacement prose.\n\n"
+        f"<source>\n{chunk}\n</source>\n\n"
+        f"<rejected_draft>\n{draft}\n</rejected_draft>"
+    )
+
+
 def _process_chunks(text: str, chat_fn) -> dict:
-    """Shared logic for both free and premium humanization."""
+    """Humanize chunks with continuity and objective post-generation checks."""
     chunks = _split_into_chunks(text)
-
-    if len(chunks) == 1:
-        result = chat_fn(
-            system_prompt=_SYSTEM_PROMPT,
-            user_prompt=f"Rewrite this text to sound completely human-written:\n\n{chunks[0]}",
-            temperature=0.75,
-            max_tokens=4096,
-        )
-        return {"humanized": result, "steps": None}
-
     humanized_parts: list[str] = []
+    retries = 0
     for i, chunk in enumerate(chunks):
-        logger.info("Humanizing chunk %d/%d (%d chars)", i + 1, len(chunks), len(chunk))
-        part = chat_fn(
+        if len(chunks) > 1:
+            logger.info("Humanizing chunk %d/%d (%d chars)", i + 1, len(chunks), len(chunk))
+        voice_reference = humanized_parts[-1][-_VOICE_REFERENCE_LIMIT:] if humanized_parts else ""
+        first_draft = _clean_output(chat_fn(
             system_prompt=_SYSTEM_PROMPT,
-            user_prompt=(
-                f"Rewrite this text to sound completely human-written. "
-                f"This is section {i + 1} of {len(chunks)} — maintain a consistent "
-                f"voice throughout:\n\n{chunk}"
-            ),
-            temperature=0.75,
-            max_tokens=4096,
-        )
-        humanized_parts.append(part)
+            user_prompt=_rewrite_prompt(chunk, i, len(chunks), voice_reference),
+            temperature=0.45,
+            max_tokens=_max_output_tokens(chunk),
+        ))
+        issues = _quality_issues(chunk, first_draft)
+        chosen = first_draft
 
-    return {
-        "humanized": "\n\n".join(humanized_parts),
-        "steps": {"chunks_processed": str(len(chunks))},
-    }
+        if issues:
+            retries += 1
+            logger.info("Retrying humanize chunk %d: %s", i + 1, "; ".join(issues))
+            repaired = _clean_output(chat_fn(
+                system_prompt=_SYSTEM_PROMPT,
+                user_prompt=_repair_prompt(chunk, first_draft, issues),
+                temperature=0.25,
+                max_tokens=_max_output_tokens(chunk),
+            ))
+            if len(_quality_issues(chunk, repaired)) < len(issues):
+                chosen = repaired
+
+        humanized_parts.append(chosen)
+
+    steps = None
+    if len(chunks) > 1 or retries:
+        steps = {
+            "chunks_processed": str(len(chunks)),
+            "quality_retries": str(retries),
+        }
+    return {"humanized": "\n\n".join(humanized_parts), "steps": steps}
 
 
 # ── Local pipeline fallback ──────────────────────────────────────────────────
 
 def _humanize_pipeline(text: str) -> dict:  # pragma: no cover
-    import random
     from services.paraphrase_service import paraphrase
-    from services.translate_service import translate
 
     CONTRACTIONS = {
         "do not": "don't", "does not": "doesn't", "did not": "didn't",
@@ -163,26 +260,44 @@ def _humanize_pipeline(text: str) -> dict:  # pragma: no cover
         "I am": "I'm", "you are": "you're", "it is": "it's",
         "we are": "we're", "they are": "they're", "that is": "that's",
     }
-    MARKERS = ["Honestly, ", "Basically, ", "Look, ", "Actually, ", "Frankly, "]
+    PLAIN_LANGUAGE = {
+        "in order to": "to",
+        "due to the fact that": "because",
+        "has the ability to": "can",
+        "provides users with the ability to": "lets users",
+        "at this point in time": "now",
+        "a significant number of": "many",
+    }
 
-    paraphrased = paraphrase(text, intensity=3)
     try:
-        french = translate(paraphrased, "en", "fr")
-        back = translate(french, "fr", "en")
+        paraphrased, _ = paraphrase(text, intensity=3)
     except Exception:
-        back = paraphrased
+        # The lightweight production image may omit the optional local T5
+        # dependency. A conservative deterministic cleanup is safer than
+        # failing the request or corrupting the source through back-translation.
+        paraphrased = text
+    humanized = paraphrased
+    for inflated, direct in PLAIN_LANGUAGE.items():
+        humanized = re.sub(
+            r"\b" + re.escape(inflated) + r"\b",
+            direct,
+            humanized,
+            flags=re.IGNORECASE,
+        )
 
-    for formal, short in CONTRACTIONS.items():
-        back = re.sub(r"\b" + re.escape(formal) + r"\b", short, back, flags=re.IGNORECASE)
-
-    sentences = re.split(r"(?<=[.!?])\s+", back.strip())
-    if sentences:
-        idx = random.randint(0, len(sentences) - 1)
-        m = random.choice(MARKERS)
-        sentences[idx] = m + sentences[idx][0].lower() + sentences[idx][1:]
-    humanized = " ".join(sentences)
+    # Contractions suit personal or conversational writing, but forcing them
+    # into academic or technical prose makes the fallback less faithful.
+    conversational = bool(re.search(r"\b(?:I|we|you|my|our|your)\b|\w+n['’]t\b", text, re.IGNORECASE))
+    if conversational:
+        for formal, short in CONTRACTIONS.items():
+            humanized = re.sub(
+                r"\b" + re.escape(formal) + r"\b",
+                short,
+                humanized,
+                flags=re.IGNORECASE,
+            )
 
     return {
         "humanized": humanized,
-        "steps": {"paraphrased": paraphrased, "back_translated": back},
+        "steps": {"fallback": "meaning-preserving local rewrite"},
     }
