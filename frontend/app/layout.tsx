@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { AuthProvider } from "@/lib/auth-context";
@@ -12,12 +12,15 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     apple: "/icon-192.png",
   },
-  themeColor: "#0284c7",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "Anovo",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#059669",
 };
 
 export default function RootLayout({

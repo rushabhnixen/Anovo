@@ -15,6 +15,18 @@ logger = logging.getLogger(__name__)
 
 _CHUNK_CHAR_LIMIT = 3500
 
+MODE_PROMPTS: dict[str, str] = {
+    "standard": "Use natural vocabulary and varied sentence structure.",
+    "fluency": "Prioritize clarity, readability, grammar, and a smooth natural flow.",
+    "formal": "Use polished, professional language without sounding inflated.",
+    "simple": "Use plain language and shorter, easier-to-understand phrasing.",
+    "creative": "Use fresh, expressive phrasing while preserving every fact.",
+    "academic": "Use precise, objective, scholarly language and retain technical terms.",
+    "expand": "Add useful clarity and transitions, but do not invent facts or arguments.",
+    "shorten": "Make the text concise while preserving every essential fact and qualification.",
+    "humanize": "Use natural cadence, varied syntax, and idiomatic wording that sounds genuinely human.",
+}
+
 INTENSITY_PROMPTS: dict[int, str] = {
     1: (
         "Paraphrase the following text with minimal changes — only replace a few words "
@@ -41,25 +53,33 @@ INTENSITY_PROMPTS: dict[int, str] = {
 
 _SYSTEM_PROMPT = (
     "You are a professional writing assistant specialised in paraphrasing. "
+    "Preserve every fact, name, number, date, citation, technical term, and negation. "
+    "Never generalise a precise claim or add information that is not in the source. "
+    "Keep paragraph boundaries and, unless asked to expand or shorten, keep roughly the same length. "
     "Return ONLY the paraphrased text — no explanations, no labels, "
     "no quotation marks, no preamble."
 )
 
 
-def paraphrase(text: str, intensity: int = 3) -> tuple[str, str]:
+def paraphrase(text: str, intensity: int = 3, writing_mode: str = "standard") -> tuple[str, str]:
     """Return (paraphrased_text, model_used) at the given intensity (1-5)."""
     try:
-        return _paraphrase_llm(text, intensity), "standard"
+        return _paraphrase_llm(text, intensity, writing_mode), "standard"
     except RuntimeError:
         return _paraphrase_t5(text, intensity), "standard"
 
 
-def paraphrase_premium(text: str, intensity: int = 3, model: str = "Meta-Llama-3.1-405B-Instruct") -> tuple[str, str]:
+def paraphrase_premium(
+    text: str,
+    intensity: int = 3,
+    model: str = "Meta-Llama-3.1-405B-Instruct",
+    writing_mode: str = "standard",
+) -> tuple[str, str]:
     """Paraphrase using a premium GitHub Models model. Returns (text, model_used)."""
     try:
-        return _paraphrase_llm_premium(text, intensity, model)
+        return _paraphrase_llm_premium(text, intensity, model, writing_mode)
     except RuntimeError:
-        return _paraphrase_llm(text, intensity), "standard"
+        return _paraphrase_llm(text, intensity, writing_mode), "standard"
 
 
 def _split_into_chunks(text: str) -> list[str]:
@@ -84,9 +104,10 @@ def _split_into_chunks(text: str) -> list[str]:
     return chunks if chunks else [text]
 
 
-def _paraphrase_with_fn(text: str, intensity: int, chat_fn) -> str:
+def _paraphrase_with_fn(text: str, intensity: int, chat_fn, writing_mode: str = "standard") -> str:
     """Shared chunking logic for both free and premium paraphrasing."""
     instruction = INTENSITY_PROMPTS.get(intensity, INTENSITY_PROMPTS[3])
+    mode_instruction = MODE_PROMPTS.get(writing_mode, MODE_PROMPTS["standard"])
     chunks = _split_into_chunks(text)
 
     parts: list[str] = []
@@ -103,7 +124,10 @@ def _paraphrase_with_fn(text: str, intensity: int, chat_fn) -> str:
             )
         part = chat_fn(
             system_prompt=_SYSTEM_PROMPT,
-            user_prompt=f"{instruction}{context}\n\nText to paraphrase:\n{chunk}\n\nParaphrased version:",
+            user_prompt=(
+                f"{instruction} {mode_instruction}{context}\n\n"
+                f"Text to paraphrase:\n{chunk}\n\nParaphrased version:"
+            ),
             temperature=0.4 + (intensity - 1) * 0.15,
             max_tokens=4096,
         )
@@ -112,13 +136,18 @@ def _paraphrase_with_fn(text: str, intensity: int, chat_fn) -> str:
     return "\n\n".join(parts)
 
 
-def _paraphrase_llm(text: str, intensity: int) -> str:
+def _paraphrase_llm(text: str, intensity: int, writing_mode: str = "standard") -> str:
     from services.llm_client import llm_chat
 
-    return _paraphrase_with_fn(text, intensity, llm_chat)
+    return _paraphrase_with_fn(text, intensity, llm_chat, writing_mode)
 
 
-def _paraphrase_llm_premium(text: str, intensity: int, model: str) -> tuple[str, str]:
+def _paraphrase_llm_premium(
+    text: str,
+    intensity: int,
+    model: str,
+    writing_mode: str = "standard",
+) -> tuple[str, str]:
     from services.llm_client import llm_chat_premium
 
     model_used = "standard"
@@ -132,8 +161,68 @@ def _paraphrase_llm_premium(text: str, intensity: int, model: str) -> tuple[str,
         model_used = mu
         return content
 
-    result = _paraphrase_with_fn(text, intensity, _chat_fn)
+    result = _paraphrase_with_fn(text, intensity, _chat_fn, writing_mode)
     return result, model_used
+
+
+def refine_selection(
+    text: str,
+    selected_text: str,
+    kind: str,
+    writing_mode: str = "standard",
+    intensity: int = 3,
+    count: int = 5,
+) -> list[str]:
+    """Generate contextual alternatives for one sentence or one word."""
+    from services.llm_client import llm_chat
+
+    mode_instruction = MODE_PROMPTS.get(writing_mode, MODE_PROMPTS["standard"])
+    if kind == "word":
+        system_prompt = (
+            "You are a context-aware thesaurus. Suggest replacement words or short phrases "
+            "that fit the exact grammar, tense, number, meaning, and tone of the selected word. "
+            "Do not repeat the selected word. Return only a numbered list, one option per line."
+        )
+        user_prompt = (
+            f"Full text:\n{text}\n\nSelected word: {selected_text}\n"
+            f"Style: {mode_instruction}\nProvide {count} precise replacements."
+        )
+    else:
+        system_prompt = (
+            "You rewrite a selected sentence without changing its meaning. Preserve every fact, "
+            "name, number, qualification, citation, and negation. Each suggestion must stand in "
+            "the same surrounding text. Return only a numbered list, one complete sentence per line."
+        )
+        intensity_instruction = INTENSITY_PROMPTS.get(intensity, INTENSITY_PROMPTS[3])
+        user_prompt = (
+            f"Full text for context:\n{text}\n\nSelected sentence:\n{selected_text}\n\n"
+            f"Style: {mode_instruction}\nChange level: {intensity_instruction}\n"
+            f"Provide {count} distinct, precise alternatives."
+        )
+
+    raw = llm_chat(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        temperature=0.35 if kind == "word" else 0.65,
+        max_tokens=600 if kind == "word" else 1400,
+    )
+    return _parse_suggestions(raw, selected_text, count)
+
+
+def _parse_suggestions(raw: str, selected_text: str, count: int) -> list[str]:
+    """Normalize numbered/bulleted LLM output into a stable deduplicated list."""
+    suggestions: list[str] = []
+    selected_key = selected_text.strip().casefold().rstrip(".!?")
+    for line in raw.splitlines():
+        value = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip()
+        value = value.strip('"“”')
+        if not value or value.casefold().rstrip(".!?") == selected_key:
+            continue
+        if value.casefold() not in {item.casefold() for item in suggestions}:
+            suggestions.append(value)
+        if len(suggestions) == count:
+            break
+    return suggestions
 
 
 # ── T5 fallback ──────────────────────────────────────────────────────────────

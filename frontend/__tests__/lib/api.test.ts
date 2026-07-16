@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom";
 import {
   paraphraseText,
+  refineParaphrase,
   checkGrammar,
   summarizeText,
   translateText,
@@ -41,9 +42,23 @@ describe("API library", () => {
     const result = await paraphraseText("text", 3);
     expect(mockFetch).toHaveBeenCalledWith(`${BASE}/api/paraphrase`, expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ text: "text", intensity: 3, model: "standard" }),
+      body: JSON.stringify({ text: "text", intensity: 3, model: "standard", writing_mode: "standard" }),
     }));
     expect(result).toEqual(expected);
+  });
+
+  it("refineParaphrase requests contextual sentence alternatives", async () => {
+    mockSuccess({ selected_text: "A sentence.", kind: "sentence", suggestions: ["Another sentence."] });
+    await refineParaphrase("Full text.", "A sentence.", "sentence", "formal", 4, 5);
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body).toEqual({
+      text: "Full text.",
+      selected_text: "A sentence.",
+      kind: "sentence",
+      writing_mode: "formal",
+      intensity: 4,
+      count: 5,
+    });
   });
 
   it("checkGrammar defaults to en-US language", async () => {

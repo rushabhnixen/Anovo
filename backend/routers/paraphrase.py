@@ -2,11 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.schemas import ParaphraseRequest, ParaphraseResponse
+from models.schemas import (
+    ParaphraseRefineRequest,
+    ParaphraseRefineResponse,
+    ParaphraseRequest,
+    ParaphraseResponse,
+)
 from routers.auth import _optional_user_id
 from services.auth_service import get_user_by_id
 from services.paraphrase_service import paraphrase as _paraphrase
 from services.paraphrase_service import paraphrase_premium as _paraphrase_premium
+from services.paraphrase_service import refine_selection as _refine_selection
 
 router = APIRouter(prefix="/api", tags=["paraphrase"])
 
@@ -34,9 +40,18 @@ def paraphrase_endpoint(
 
     try:
         if use_premium:
-            result_text, model_used = _paraphrase_premium(request.text, request.intensity, model=request.model)
+            result_text, model_used = _paraphrase_premium(
+                request.text,
+                request.intensity,
+                model=request.model,
+                writing_mode=request.writing_mode,
+            )
         else:
-            result_text, model_used = _paraphrase(request.text, request.intensity)
+            result_text, model_used = _paraphrase(
+                request.text,
+                request.intensity,
+                writing_mode=request.writing_mode,
+            )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -45,4 +60,30 @@ def paraphrase_endpoint(
         paraphrased=result_text,
         intensity=request.intensity,
         model_used=model_used,
+        writing_mode=request.writing_mode,
+    )
+
+
+@router.post(
+    "/paraphrase/refine",
+    response_model=ParaphraseRefineResponse,
+    summary="Suggest contextual sentence or word alternatives",
+)
+def refine_paraphrase(request: ParaphraseRefineRequest) -> ParaphraseRefineResponse:
+    try:
+        suggestions = _refine_selection(
+            text=request.text,
+            selected_text=request.selected_text,
+            kind=request.kind,
+            writing_mode=request.writing_mode,
+            intensity=request.intensity,
+            count=request.count,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return ParaphraseRefineResponse(
+        selected_text=request.selected_text,
+        kind=request.kind,
+        suggestions=suggestions,
     )

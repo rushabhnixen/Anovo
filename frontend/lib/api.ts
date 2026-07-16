@@ -7,6 +7,24 @@ export interface ParaphraseResponse {
   paraphrased: string;
   intensity: number;
   model_used?: string;
+  writing_mode?: ParaphraseMode;
+}
+
+export type ParaphraseMode =
+  | "standard"
+  | "fluency"
+  | "formal"
+  | "simple"
+  | "creative"
+  | "academic"
+  | "expand"
+  | "shorten"
+  | "humanize";
+
+export interface ParaphraseRefineResponse {
+  selected_text: string;
+  kind: "sentence" | "word";
+  suggestions: string[];
 }
 
 export interface GrammarError {
@@ -119,13 +137,35 @@ async function deleteAuth(path: string, token: string): Promise<void> {
 
 // ── Core tool API calls ──────────────────────────────────────────────────────
 
-export const paraphraseText = (text: string, intensity: number, model = "standard", token?: string) => {
-  const body = { text, intensity, model };
+export const paraphraseText = (
+  text: string,
+  intensity: number,
+  model = "standard",
+  token?: string,
+  writingMode: ParaphraseMode = "standard",
+) => {
+  const body = { text, intensity, model, writing_mode: writingMode };
   if (model !== "standard" && token) {
     return postAuth<ParaphraseResponse>("/api/paraphrase", body, token);
   }
   return post<ParaphraseResponse>("/api/paraphrase", body);
 };
+
+export const refineParaphrase = (
+  text: string,
+  selectedText: string,
+  kind: "sentence" | "word",
+  writingMode: ParaphraseMode,
+  intensity: number,
+  count = 5,
+) => post<ParaphraseRefineResponse>("/api/paraphrase/refine", {
+  text,
+  selected_text: selectedText,
+  kind,
+  writing_mode: writingMode,
+  intensity,
+  count,
+});
 
 export const checkGrammar = (text: string, language = "en-US") =>
   post<GrammarResponse>("/api/grammar-check", { text, language });
