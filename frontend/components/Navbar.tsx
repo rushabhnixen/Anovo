@@ -98,9 +98,13 @@ export default function Navbar() {
                     Promo Code
                   </button>
                 )}
-                <span className="px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400 truncate max-w-[100px]">
+                <Link
+                  href="/account"
+                  className="px-2 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-brand-600 dark:hover:text-brand-400 truncate max-w-[100px]"
+                  title="Account settings"
+                >
                   {user.username}
-                </span>
+                </Link>
                 <button
                   onClick={logout}
                   className="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -179,6 +183,9 @@ export default function Navbar() {
             {/* Mobile auth */}
             {user ? (
               <>
+                <Link href="/account" onClick={() => setMenuOpen(false)} className={mobileLinkClass("/account")}>
+                  Account settings
+                </Link>
                 {!user.is_premium && (
                   <button
                     onClick={() => { setPromoOpen(true); setMenuOpen(false); }}

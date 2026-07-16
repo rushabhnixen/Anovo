@@ -10,6 +10,7 @@ import {
   detectTone,
   coWrite,
   chatWithAI,
+  deleteCurrentUser,
 } from "@/lib/api";
 
 const mockFetch = jest.fn();
@@ -147,5 +148,14 @@ describe("API library", () => {
     await paraphraseText("text", 3);
     const headers = mockFetch.mock.calls[0][1].headers;
     expect(headers["Content-Type"]).toBe("application/json");
+  });
+
+  it("deletes the current account with authentication", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true });
+    await deleteCurrentUser("test-token");
+    expect(mockFetch).toHaveBeenCalledWith(`${BASE}/api/auth/me`, {
+      method: "DELETE",
+      headers: { Authorization: "Bearer test-token" },
+    });
   });
 });

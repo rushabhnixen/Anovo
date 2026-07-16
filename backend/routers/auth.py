@@ -105,6 +105,19 @@ def me(
     return UserResponse.model_validate(user)
 
 
+@router.delete("/me", status_code=204, summary="Delete current account")
+def delete_me(
+    user_id: int = Depends(_current_user_id),
+    db: Session = Depends(get_db),
+) -> None:
+    """Permanently delete the signed-in account and its associated history."""
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+
+
 @router.post("/redeem-promo", response_model=UserResponse, summary="Redeem a promo code for premium access")
 def redeem_promo(
     request: PromoCodeRequest,

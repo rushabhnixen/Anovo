@@ -19,6 +19,100 @@ body {
   background: var(--background);
 }
 
+body.native-app > div,
+body.native-app main {
+  overscroll-behavior-y: contain;
+}
+
+body.native-app nav:first-of-type {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+body.native-app main {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+.native-offline-banner {
+  position: fixed;
+  top: calc(3.5rem + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #9a3412;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+
+.native-offline-banner span {
+  color: #fdba74;
+}
+
+.native-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0.4rem 1rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e5e7eb;
+  background: rgb(255 255 255 / 0.96);
+  box-shadow: 0 -4px 18px rgb(15 23 42 / 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.native-toolbar button {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-radius: 0.75rem;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.native-toolbar button:active {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.native-toolbar svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.dark .native-toolbar {
+  border-color: #1f2937;
+  background: rgb(3 7 18 / 0.96);
+}
+
+.dark .native-toolbar button {
+  color: #cbd5e1;
+}
+
+.dark .native-toolbar button:active {
+  background: #0c4a6e;
+  color: #e0f2fe;
+}
+
 /* TipTap editor styles */
 .ProseMirror {
   outline: none;
