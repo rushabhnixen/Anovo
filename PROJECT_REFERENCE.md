@@ -416,8 +416,8 @@ If `github_models: false`, the `GITHUB_PAT` secret is not reaching the app (chec
 - **Text chunking:** Humanizer and paraphraser split text into ~3500-char chunks by paragraph boundary, process each independently, then join results.
 - **Max input:** 10,000 characters for humanize and paraphrase requests.
 - **Max tokens per LLM call:** 4096
-- **Humanize temperature:** 0.75 (slightly higher for more natural variation)
-- **Humanize prompt features:** Tone preservation, concrete before/after example, AI-word replacement list (delve→explore, utilize→use, etc.)
+- **Humanize temperature:** 0.45 for consistent register-aware rewriting; corrective retries use 0.25
+- **Humanize prompt features:** Strict fact/number/citation preservation, automatic register detection, direct-language rewriting, boilerplate removal, cross-chunk voice continuity, and one automatic retry when objective quality checks fail
 - **CORS:** Allows `*.vercel.app` and `*.hf.space` via regex, plus explicit origins in `CORS_ORIGINS`.
 - **Database:** SQLite by default for local dev. PostgreSQL (Neon free tier) for production on HF Spaces. Configured via `DATABASE_URL` env var.
 - **Groq key rotation:** Keys are rotated round-robin per request via `llm_client.py`. If a key is rate-limited, the next key is tried.
