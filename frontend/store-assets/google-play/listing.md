@@ -6,8 +6,8 @@
 - **Short description:** Paraphrase, humanize, summarize, translate, and improve writing with AI.
 - **Category:** Productivity
 - **Contact email:** soniqinfotech@gmail.com
-- **Privacy policy:** https://anovo-ai-writing-tools.vercel.app/privacy
-- **Account deletion:** https://anovo-ai-writing-tools.vercel.app/account
+- **Privacy policy:** https://anovo.vercel.app/privacy
+- **Account deletion:** https://anovo.vercel.app/account
 
 ### Full description
 

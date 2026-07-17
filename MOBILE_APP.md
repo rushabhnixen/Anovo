@@ -17,8 +17,8 @@ This avoids relying on Capacitor's development-only remote `server.url` setting 
 | Android compile/target SDK | API 36 |
 | Minimum iOS | iOS 15 |
 | Deep link | `anovo://humanize`, `anovo://paraphrase`, etc. |
-| Account deletion URL | `https://anovo-ai-writing-tools.vercel.app/account` |
-| Privacy URL | `https://anovo-ai-writing-tools.vercel.app/privacy` |
+| Account deletion URL | `https://anovo.vercel.app/account` |
+| Privacy URL | `https://anovo.vercel.app/privacy` |
 
 Package and bundle IDs are permanent after the first store release. Anovo uses the same `com.soniqinfotech` namespace as Soniq Infotech's existing Play apps.
 
@@ -82,7 +82,7 @@ Review these against the live backend before submitting:
 | Account info | Email address and username are collected when a user registers |
 | Authentication | Passwords are processed and stored only as one-way hashes; a token is stored on-device |
 | User content | Submitted writing/documents are transmitted for the requested AI processing |
-| Account deletion | Available in-app and at `https://anovo-ai-writing-tools.vercel.app/account` |
+| Account deletion | Available in-app and at `https://anovo.vercel.app/account` |
 | Encryption | Data is sent over HTTPS |
 | Permissions | Internet only; native share sheet does not grant broad file/device access |
 | Ads / tracking | None in the current codebase |
