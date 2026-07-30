@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:verify": "cross-env NEXT_PUBLIC_API_URL=https://rushabh13-anovo-api.hf.space next dev",
     "build": "next build",
     "build:mobile": "cross-env CAPACITOR_BUILD=true NEXT_PUBLIC_API_URL=https://rushabh13-anovo-api.hf.space next build",
     "start": "next start",

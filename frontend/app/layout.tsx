@@ -39,10 +39,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
+      <body className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
         <AuthProvider>
           <Navbar />
-          <main className="container mx-auto px-4 py-8">{children}</main>
+          <main className="mx-auto w-full max-w-[1440px] px-3 py-6 sm:px-6 sm:py-8">{children}</main>
           <MobileRuntime />
         </AuthProvider>
       </body>

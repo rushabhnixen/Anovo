@@ -4,7 +4,7 @@ import sharp from "sharp";
 
 const root = process.cwd();
 const output = path.join(root, "store-assets", "google-play");
-const blue = "#0284c7";
+const blue = "#059669";
 
 await mkdir(path.join(output, "screenshots"), { recursive: true });
 
@@ -21,7 +21,7 @@ const featureGraphic = Buffer.from(`
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#075985"/>
-      <stop offset="0.55" stop-color="#0284c7"/>
+      <stop offset="0.55" stop-color="#059669"/>
       <stop offset="1" stop-color="#38bdf8"/>
     </linearGradient>
     <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
@@ -33,7 +33,7 @@ const featureGraphic = Buffer.from(`
   <circle cx="785" cy="450" r="245" fill="#fff" opacity=".06"/>
   <g transform="translate(72 126)" filter="url(#shadow)">
     <rect width="210" height="210" rx="48" fill="#fff"/>
-    <g transform="translate(41 41) scale(4)" fill="none" stroke="#0284c7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(41 41) scale(4)" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M22.5 6.5l3 3-13 13H9.5v-3l13-13z"/>
       <path d="M19 10l3 3"/>
       <path d="M8 24h16"/>

@@ -3,7 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 
 const root = process.cwd();
-const blue = "#0284c7";
+const blue = "#059669";
 
 const brandSvg = (size, { round = false, foregroundOnly = false } = {}) => Buffer.from(`
   <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32">

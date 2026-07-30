@@ -5,20 +5,30 @@
 
   let overlay = null;
 
-  function getApiUrl() {
+  function getSettings() {
     return new Promise((resolve) => {
-      chrome.storage.sync.get(
-        { apiUrl: "https://rushabh13-anovo-api.hf.space" },
-        (items) => resolve(items.apiUrl)
+      chrome.storage.local.get(
+        {
+          apiUrl: "https://rushabh13-anovo-api.hf.space",
+          authToken: null,
+          workspaceModel: "standard",
+          workspaceMode: "standard",
+        },
+        (items) => resolve(items)
       );
     });
   }
 
   async function callApi(tool, text) {
-    const apiUrl = await getApiUrl();
+    const settings = await getSettings();
+    const selectedModel = settings.authToken ? settings.workspaceModel : "standard";
     const endpoints = {
-      humanize: { path: "/api/humanize", body: { text }, field: "humanized" },
-      paraphrase: { path: "/api/paraphrase", body: { text, intensity: 3 }, field: "paraphrased" },
+      humanize: { path: "/api/humanize", body: { text, model: selectedModel }, field: "humanized" },
+      paraphrase: {
+        path: "/api/paraphrase",
+        body: { text, intensity: 3, model: selectedModel, writing_mode: settings.workspaceMode },
+        field: "paraphrased",
+      },
       grammar: { path: "/api/grammar-check", body: { text, language: "en-US" }, field: null },
       summarize: { path: "/api/summarize", body: { text, mode: "paragraph", max_length: 150 }, field: "summary" },
       translate: { path: "/api/translate", body: { text, source_language: "en", target_language: "fr" }, field: "translated" },
@@ -28,9 +38,14 @@
     const ep = endpoints[tool];
     if (!ep) throw new Error(`Unknown tool: ${tool}`);
 
-    const resp = await fetch(`${apiUrl}${ep.path}`, {
+    const headers = { "Content-Type": "application/json" };
+    if (selectedModel !== "standard" && settings.authToken) {
+      headers.Authorization = `Bearer ${settings.authToken}`;
+    }
+
+    const resp = await fetch(`${settings.apiUrl}${ep.path}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify(ep.body),
     });
 
@@ -81,10 +96,44 @@
     `;
 
     document.body.appendChild(overlay);
+    positionOverlay(overlay);
 
     overlay.querySelector(".anovo-close").addEventListener("click", removeOverlay);
 
     return overlay;
+  }
+
+  function positionOverlay(element) {
+    const selection = window.getSelection();
+    let anchor = null;
+
+    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+      anchor = selection.getRangeAt(0).getBoundingClientRect();
+    }
+
+    if (!anchor || (!anchor.width && !anchor.height)) {
+      const active = document.activeElement;
+      if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" || active.isContentEditable)) {
+        anchor = active.getBoundingClientRect();
+      }
+    }
+
+    if (!anchor) {
+      anchor = { left: window.innerWidth - 440, right: window.innerWidth - 20, top: 20, bottom: 20, width: 420, height: 0 };
+    }
+
+    const width = Math.min(420, window.innerWidth - 24);
+    const left = Math.min(Math.max(12, anchor.left), window.innerWidth - width - 12);
+    const estimatedHeight = Math.min(440, window.innerHeight * 0.78);
+    const below = anchor.bottom + 10;
+    const top = below + estimatedHeight > window.innerHeight
+      ? Math.max(12, anchor.top - estimatedHeight - 10)
+      : Math.max(12, below);
+
+    element.style.width = `${width}px`;
+    element.style.left = `${left}px`;
+    element.style.top = `${top}px`;
+    element.style.right = "auto";
   }
 
   function updateOverlay(result, originalText) {

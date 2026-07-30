@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #171717;
-  --background: #ffffff;
+  --foreground: #0f172a;
+  --background: #f8fafc;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -17,6 +17,41 @@
 body {
   color: var(--foreground);
   background: var(--background);
+  background-image:
+    radial-gradient(circle at 15% 0%, rgb(16 185 129 / 0.07), transparent 28rem),
+    radial-gradient(circle at 85% 8%, rgb(59 130 246 / 0.05), transparent 24rem);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: rgb(167 243 208 / 0.85);
+  color: #064e3b;
+}
+
+button,
+a,
+select,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #10b981;
+  outline-offset: 2px;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 body.native-app > div,
@@ -116,7 +151,8 @@ body.native-app main {
 /* TipTap editor styles */
 .ProseMirror {
   outline: none;
-  min-height: 160px;
+  min-height: 210px;
+  line-height: 1.75;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {

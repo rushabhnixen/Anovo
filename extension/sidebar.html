@@ -3,82 +3,126 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Anovo Sidebar</title>
+  <title>Anovo Workspace</title>
   <link rel="stylesheet" href="sidebar.css" />
 </head>
 <body>
-  <!-- Header -->
-  <div class="sb-header">
-    <h1>Anovo</h1>
-    <span class="sb-version">v1.1.0</span>
-  </div>
+  <header class="sb-header">
+    <a class="sb-brand" href="https://anovo.vercel.app" target="_blank" rel="noreferrer">
+      <span class="sb-logo">A</span>
+      <span>
+        <strong>Anovo</strong>
+        <small>Writing workspace</small>
+      </span>
+    </a>
+    <span class="sb-version">v1.2</span>
+  </header>
 
-  <!-- Auth section -->
-  <div id="auth-section" class="sb-section">
-    <div id="auth-login" class="sb-auth-form">
-      <div class="sb-section-title">Sign in for premium models</div>
-      <input type="email" id="auth-email" placeholder="Email" class="sb-input" />
-      <input type="password" id="auth-password" placeholder="Password" class="sb-input" />
-      <button id="auth-submit" class="sb-btn sb-btn-primary sb-btn-full">Sign in</button>
-      <div id="auth-error" class="sb-error"></div>
-    </div>
-    <div id="auth-user" class="sb-auth-user" style="display:none">
-      <div class="sb-user-info">
-        <span id="auth-username" class="sb-username"></span>
-        <span id="auth-badge" class="sb-badge" style="display:none">Premium</span>
+  <main class="sb-main">
+    <section id="auth-section" class="sb-card sb-auth-card">
+      <div id="auth-login">
+        <div class="sb-card-heading">
+          <div>
+            <strong>Unlock PRO models</strong>
+            <span>Sign in to use GPT, Llama, DeepSeek, and more.</span>
+          </div>
+          <span class="sb-pro-badge">PRO</span>
+        </div>
+        <div class="sb-auth-fields">
+          <input type="email" id="auth-email" placeholder="Email" class="sb-input" />
+          <input type="password" id="auth-password" placeholder="Password" class="sb-input" />
+          <button id="auth-submit" class="sb-btn sb-btn-primary">Sign in</button>
+        </div>
+        <div id="auth-error" class="sb-error" role="alert"></div>
       </div>
-      <button id="auth-logout" class="sb-btn sb-btn-small">Sign out</button>
-    </div>
-  </div>
+      <div id="auth-user" class="sb-auth-user" hidden>
+        <div class="sb-user-info">
+          <span class="sb-avatar">A</span>
+          <span>
+            <strong id="auth-username"></strong>
+            <small id="auth-plan">Free plan</small>
+          </span>
+        </div>
+        <button id="auth-logout" class="sb-btn sb-btn-quiet">Sign out</button>
+      </div>
+    </section>
 
-  <!-- Model selector (premium only) -->
-  <div id="model-section" class="sb-section" style="display:none">
-    <label class="sb-label">Model</label>
-    <select id="model-select" class="sb-select">
-      <option value="standard">Standard (Groq)</option>
-      <option value="gpt-4o">GPT-4o</option>
-      <option value="gpt-4o-mini">GPT-4o Mini</option>
-      <option value="Meta-Llama-3.1-405B-Instruct">Llama 405B</option>
-      <option value="Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
-      <option value="Meta-Llama-3.1-8B-Instruct">Llama 8B (Fast)</option>
-      <option value="Phi-4">Phi-4 (Microsoft)</option>
-      <option value="DeepSeek-R1">DeepSeek R1</option>
-      <option value="Cohere-command-r-plus-08-2024">Cohere Command R+</option>
-    </select>
-  </div>
+    <section class="sb-workspace">
+      <div class="sb-tool-row">
+        <label for="tool-select">Tool</label>
+        <select id="tool-select" class="sb-select">
+          <option value="paraphrase">↻ Paraphrase</option>
+          <option value="humanize">✦ Humanize</option>
+          <option value="grammar">✓ Grammar</option>
+          <option value="summarize">≡ Summarize</option>
+          <option value="translate">文 Translate</option>
+          <option value="tone">◒ Tone</option>
+        </select>
+      </div>
 
-  <!-- Tool tabs -->
-  <div class="sb-tabs">
-    <button class="sb-tab active" data-tool="humanize">Humanize</button>
-    <button class="sb-tab" data-tool="paraphrase">Paraphrase</button>
-    <button class="sb-tab" data-tool="grammar">Grammar</button>
-    <button class="sb-tab" data-tool="summarize">Summarize</button>
-    <button class="sb-tab" data-tool="translate">Translate</button>
-    <button class="sb-tab" data-tool="tone">Tone</button>
-  </div>
+      <div id="mode-row" class="sb-mode-row" aria-label="Writing mode">
+        <button class="sb-mode active" data-mode="standard">Standard</button>
+        <button class="sb-mode" data-mode="fluency">Fluency</button>
+        <button class="sb-mode" data-mode="humanize">Humanize</button>
+        <button class="sb-mode" data-mode="formal">Formal</button>
+        <button class="sb-mode" data-mode="simple">Simple</button>
+        <button class="sb-mode" data-mode="creative">Creative</button>
+      </div>
 
-  <!-- Input -->
-  <div class="sb-section">
-    <textarea id="sb-input" class="sb-textarea" placeholder="Paste or type text here…"></textarea>
-    <button id="sb-process" class="sb-btn sb-btn-primary sb-btn-full">Process</button>
-  </div>
+      <div class="sb-editor">
+        <div class="sb-editor-head">
+          <span>Your text</span>
+          <button id="sb-clear" class="sb-link-btn">Clear</button>
+        </div>
+        <textarea id="sb-input" class="sb-textarea" placeholder="Paste or type text here…"></textarea>
+        <div class="sb-editor-foot">
+          <span id="sb-count">0 words</span>
+          <button id="sb-process" class="sb-btn sb-btn-primary">Paraphrase</button>
+        </div>
+      </div>
 
-  <!-- Output -->
-  <div id="sb-output-area" class="sb-section" style="display:none">
-    <div class="sb-section-title">Result</div>
-    <div id="sb-output" class="sb-output-box"></div>
-    <div class="sb-output-actions">
-      <button id="sb-copy" class="sb-btn sb-btn-small">Copy</button>
-    </div>
-    <div id="sb-model-used" class="sb-model-used"></div>
-  </div>
+      <div id="model-section" class="sb-model-row">
+        <label for="model-select">
+          Model
+          <span id="model-lock">Sign in for PRO</span>
+        </label>
+        <select id="model-select" class="sb-select">
+          <option value="standard">Anovo Fast · Free</option>
+          <option value="gpt-4o">GPT-4o · PRO</option>
+          <option value="gpt-4o-mini">GPT-4o Mini · PRO</option>
+          <option value="Meta-Llama-3.1-405B-Instruct">Llama 405B · PRO</option>
+          <option value="Llama-3.3-70B-Instruct">Llama 3.3 70B · PRO</option>
+          <option value="Meta-Llama-3.1-8B-Instruct">Llama 8B · PRO</option>
+          <option value="Phi-4">Phi-4 · PRO</option>
+          <option value="DeepSeek-R1">DeepSeek R1 · PRO</option>
+          <option value="Cohere-command-r-plus-08-2024">Command R+ · PRO</option>
+        </select>
+      </div>
 
-  <!-- Settings -->
-  <div class="sb-footer">
-    <label class="sb-label">API URL</label>
-    <input type="text" id="sb-api-url" class="sb-input" placeholder="https://rushabh13-anovo-api.hf.space" />
-    <button id="sb-save-url" class="sb-btn sb-btn-small" style="margin-top:4px">Save</button>
-  </div>
+      <div id="sb-output-area" class="sb-result" hidden>
+        <div class="sb-editor-head">
+          <span id="sb-result-label">Result</span>
+          <div>
+            <button id="sb-copy" class="sb-link-btn">Copy</button>
+            <button id="sb-open" class="sb-link-btn">Open workspace</button>
+          </div>
+        </div>
+        <div id="sb-output" class="sb-output-box"></div>
+        <div id="sb-model-used" class="sb-model-used"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="sb-footer">
+    <details>
+      <summary>Connection settings</summary>
+      <label for="sb-api-url">API URL</label>
+      <div class="sb-setting-row">
+        <input type="text" id="sb-api-url" class="sb-input" placeholder="https://rushabh13-anovo-api.hf.space" />
+        <button id="sb-save-url" class="sb-btn sb-btn-quiet">Save</button>
+      </div>
+    </details>
+  </footer>
 
   <script src="sidebar.js"></script>
 </body>

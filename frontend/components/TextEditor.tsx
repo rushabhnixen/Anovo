@@ -40,10 +40,10 @@ export default function TextEditor({
 
   return (
     <div
-      className={`min-h-[180px] rounded-lg border p-3 text-sm transition-colors ${
+      className={`min-h-[240px] rounded-2xl border p-4 text-[15px] shadow-sm transition-colors ${
         readOnly
-          ? "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 cursor-default"
-          : "bg-white dark:bg-gray-950 border-gray-300 dark:border-gray-700 focus-within:border-brand-500 focus-within:ring-1 focus-within:ring-brand-500"
+          ? "cursor-default border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"
+          : "border-slate-200 bg-white focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:focus-within:ring-emerald-950"
       }`}
     >
       <EditorContent editor={editor} />
