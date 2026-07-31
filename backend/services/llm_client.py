@@ -227,6 +227,11 @@ def _call_provider(
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    if model.startswith("openai/gpt-oss-"):
+        # These models default to medium reasoning, which spends extra tokens
+        # and latency on routine writing tasks. Low effort keeps their quality
+        # while returning visible copy much faster and more reliably.
+        payload["reasoning_effort"] = "low"
 
     try:
         resp = httpx.post(url, json=payload, headers=headers, timeout=timeout)

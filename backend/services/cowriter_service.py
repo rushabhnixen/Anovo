@@ -72,7 +72,9 @@ def _suggest_llm(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             temperature=0.78,
-            max_tokens=max_tokens * n + 180,
+            # GPT-OSS counts reasoning and visible text in this budget. Keep a
+            # floor so all requested insert-ready options reach the response.
+            max_tokens=max(1024, max_tokens * n + 220),
         )
         model_used = "standard"
     else:
@@ -81,7 +83,7 @@ def _suggest_llm(
             user_prompt=user_prompt,
             model=model,
             temperature=0.78,
-            max_tokens=max_tokens * n + 180,
+            max_tokens=max(1024, max_tokens * n + 220),
         )
 
     return _parse_suggestions(raw, text, n), model_used
