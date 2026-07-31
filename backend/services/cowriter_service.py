@@ -133,13 +133,18 @@ def _fallback_suggestions(text: str, count: int, action: str) -> list[str]:
             "A concrete example can make the point easier to understand and apply.",
         ],
         "next_paragraph": [
-            "The broader implication is worth considering. A strong response connects the main idea to a practical outcome and explains why that outcome matters.",
-            "From here, the discussion can move from the central claim to its real-world effect, using one specific example to keep the argument grounded.",
-            "The next point should build on this foundation by identifying the clearest consequence and the action it requires.",
+            "The broader implication is worth considering. A strong response connects the main idea "
+            "to a practical outcome and explains why that outcome matters.",
+            "From here, the discussion can move from the central claim to its real-world effect, "
+            "using one specific example to keep the argument grounded.",
+            "The next point should build on this foundation by identifying the clearest consequence "
+            "and the action it requires.",
         ],
         "expand": [
-            "One way to develop this point is to add a concrete example, explain its effect, and connect it back to the central argument.",
-            "This idea becomes stronger when the reasoning behind it is stated directly and supported with a practical detail.",
+            "One way to develop this point is to add a concrete example, explain its effect, "
+            "and connect it back to the central argument.",
+            "This idea becomes stronger when the reasoning behind it is stated directly "
+            "and supported with a practical detail.",
             "The key is to show not only what happens, but also why it matters in the larger context.",
         ],
         "transition": [
@@ -148,9 +153,12 @@ def _fallback_suggestions(text: str, count: int, action: str) -> list[str]:
             "The same principle also helps explain the next part of the discussion.",
         ],
         "outline": [
-            "• Clarify the main claim\n• Add one concrete example\n• Explain the impact\n• Close with the next action",
-            "• Establish the context\n• Present the strongest reason\n• Address a likely concern\n• End with a clear conclusion",
-            "• Define the goal\n• Describe the current challenge\n• Compare the available options\n• Recommend the best next step",
+            "• Clarify the main claim\n• Add one concrete example\n"
+            "• Explain the impact\n• Close with the next action",
+            "• Establish the context\n• Present the strongest reason\n"
+            "• Address a likely concern\n• End with a clear conclusion",
+            "• Define the goal\n• Describe the current challenge\n"
+            "• Compare the available options\n• Recommend the best next step",
         ],
     }
     return templates.get(action, templates["continue"])[:count]
