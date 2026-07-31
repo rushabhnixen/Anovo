@@ -12,7 +12,7 @@
     button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:2px solid #34d399; outline-offset:2px; }
     .header { display:flex; align-items:center; justify-content:space-between; padding:13px 14px; border-bottom:1px solid var(--line); background:rgb(255 255 255/.9); }
     .brand { display:flex; align-items:center; gap:9px; }
-    .logo { display:grid; place-items:center; width:32px; height:32px; border-radius:11px; background:var(--brand); color:#fff; font-weight:900; }
+    .logo { display:block; width:32px; height:32px; border-radius:11px; }
     .brand span:last-child { display:flex; flex-direction:column; }
     .brand strong { font-size:14px; line-height:1.1; }
     .brand small,.version { color:var(--muted); font-size:10px; }
@@ -49,8 +49,8 @@
 </head>
 <body>
   <header class="header">
-    <div class="brand"><span class="logo">A</span><span><strong>Anovo</strong><small>Quick workspace</small></span></div>
-    <span class="version">v1.5</span>
+    <div class="brand"><img class="logo" src="icons/icon-48.png" alt="" /><span><strong>Anovo</strong><small>Quick workspace</small></span></div>
+    <span class="version">v1.5.1</span>
   </header>
   <div class="wrap">
     <section class="card">

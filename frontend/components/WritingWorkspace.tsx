@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { TRANSLATION_LANGUAGES } from "@/lib/languages";
+import LanguageSelector from "./LanguageSelector";
 import ModelSelector from "./ModelSelector";
 import SuggestionPopover from "./SuggestionPopover";
 import SynonymSlider from "./SynonymSlider";
@@ -767,16 +768,13 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
               ) : null}
 
               {tool === "translate" ? (
-                <div className="mb-4 flex items-center gap-2">
-                  <select
-                    aria-label="Source language"
+                <div className="mb-4 flex items-end gap-2">
+                  <LanguageSelector
+                    label="From"
                     value={sourceLanguage}
-                    onChange={(event) => setSourceLanguage(event.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
-                  >
-                      <option value="auto">Detect language</option>
-                      {TRANSLATION_LANGUAGES.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
-                  </select>
+                    onChange={setSourceLanguage}
+                    allowAuto
+                  />
                   <button
                     type="button"
                     onClick={() => {
@@ -784,18 +782,16 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                       setTargetLanguage(sourceLanguage === "auto" ? "en" : sourceLanguage);
                     }}
                     aria-label="Swap languages"
-                    className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900"
+                    className="mb-0.5 rounded-lg border border-slate-200 px-2.5 py-2 text-sm text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900"
                   >
                     ⇄
                   </button>
-                  <select
-                    aria-label="Target language"
+                  <LanguageSelector
+                    label="To"
                     value={targetLanguage}
-                    onChange={(event) => setTargetLanguage(event.target.value)}
-                    className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
-                  >
-                      {TRANSLATION_LANGUAGES.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
-                  </select>
+                    onChange={setTargetLanguage}
+                    exclude={sourceLanguage === "auto" ? undefined : sourceLanguage}
+                  />
                 </div>
               ) : null}
 

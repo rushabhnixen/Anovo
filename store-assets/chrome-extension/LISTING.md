@@ -63,8 +63,10 @@ Anovo improves user-selected or user-entered writing through AI-assisted rewriti
 
 The free Anovo Fast model does not require an account. PRO model selection requires an Anovo premium account.
 
-## Version 1.5 release notes
+## Version 1.5.1 release notes
 
+- Restored Anovo's original blue logo across the website and extension.
+- Added searchable language selection to the unified translation workspace.
 - Added a full CoWriter with Continue, Next paragraph, Expand idea, Transition, and Outline actions.
 - Added Match voice, Professional, Friendly, Academic, Persuasive, and Creative writing voices.
 - Context-menu actions now respect the same intensity, summary length, language, and model preferences as the popup and side panel.

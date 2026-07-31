@@ -59,7 +59,13 @@ textarea:focus-visible {
 .sb-brand strong { font-size: 14px; line-height: 1.1; }
 .sb-brand small { color: var(--muted); font-size: 10px; }
 
-.sb-logo, .sb-avatar {
+.sb-logo {
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
+}
+
+.sb-avatar {
   display: grid;
   place-items: center;
   width: 31px;
