@@ -20,7 +20,7 @@ def humanize_endpoint(
     """
     Transform AI-generated text into more natural, human-sounding writing.
 
-    Set `model` to a GitHub Models model name to use premium mode
+    Set `model` to a supported Anovo model profile to use premium mode
     (requires authentication and premium account).
     """
     use_premium = request.model != "standard"

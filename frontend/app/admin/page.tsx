@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
+  getAdminModels,
   getAdminStats,
   getAdminUsers,
   updateAdminUser,
   deleteAdminUser,
+  AdminModelsResponse,
   AdminStatsResponse,
   UserResponse,
 } from "@/lib/api";
@@ -16,6 +18,7 @@ export default function AdminPage() {
   const router = useRouter();
   const { user, token, loading: authLoading } = useAuth();
   const [stats, setStats] = useState<AdminStatsResponse | null>(null);
+  const [models, setModels] = useState<AdminModelsResponse | null>(null);
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -26,12 +29,14 @@ export default function AdminPage() {
     setLoading(true);
     setError("");
     try {
-      const [s, u] = await Promise.all([
+      const [s, u, m] = await Promise.all([
         getAdminStats(token),
         getAdminUsers(token, 0, 100, search),
+        getAdminModels(token),
       ]);
       setStats(s);
       setUsers(u);
+      setModels(m);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -106,6 +111,43 @@ export default function AdminPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {models && (
+        <section className="mb-8 overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <div>
+              <h2 className="font-bold text-slate-950 dark:text-white">Writing models</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Standard routing: {models.standard_model} through {models.provider}
+              </p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+              models.provider_configured
+                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                : "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+            }`}>
+              {models.provider_configured ? "Provider configured" : "Provider key missing"}
+            </span>
+          </div>
+          <div className="grid gap-3 p-4 md:grid-cols-3">
+            {models.models.map((model) => (
+              <div key={model.id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-sm text-slate-900 dark:text-white">{model.label}</strong>
+                  <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                    model.status === "production"
+                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+                  }`}>
+                    {model.status}
+                  </span>
+                </div>
+                <code className="mt-2 block break-all text-[10px] text-slate-500">{model.provider_model}</code>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Search */}

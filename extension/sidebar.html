@@ -15,7 +15,7 @@
         <small>Writing workspace</small>
       </span>
     </a>
-    <span class="sb-version">v1.2</span>
+    <span class="sb-version">v1.3</span>
   </header>
 
   <main class="sb-main">
@@ -24,7 +24,7 @@
         <div class="sb-card-heading">
           <div>
             <strong>Unlock PRO models</strong>
-            <span>Sign in to use GPT, Llama, DeepSeek, and more.</span>
+            <span>Sign in to use the latest GPT-OSS and Qwen writing models.</span>
           </div>
           <span class="sb-pro-badge">PRO</span>
         </div>
@@ -67,6 +67,55 @@
         <button class="sb-mode" data-mode="formal">Formal</button>
         <button class="sb-mode" data-mode="simple">Simple</button>
         <button class="sb-mode" data-mode="creative">Creative</button>
+        <button class="sb-mode" data-mode="academic">Academic</button>
+        <button class="sb-mode" data-mode="expand">Expand</button>
+        <button class="sb-mode" data-mode="shorten">Shorten</button>
+      </div>
+
+      <div id="paraphrase-controls" class="sb-control-row">
+        <label for="intensity">Intensity <span id="intensity-value">3</span></label>
+        <input id="intensity" type="range" min="1" max="5" value="3" />
+      </div>
+
+      <div id="summary-controls" class="sb-control-grid" hidden>
+        <label>
+          Format
+          <select id="summary-mode" class="sb-select">
+            <option value="paragraph">Paragraph</option>
+            <option value="bullet">Bullet points</option>
+          </select>
+        </label>
+        <label>
+          Length
+          <select id="summary-length" class="sb-select">
+            <option value="80">Short</option>
+            <option value="150" selected>Medium</option>
+            <option value="300">Detailed</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="translation-controls" class="sb-control-grid" hidden>
+        <label>
+          From
+          <select id="source-language" class="sb-select">
+            <option value="en">English</option>
+            <option value="fr">French</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+            <option value="hi">Hindi</option>
+          </select>
+        </label>
+        <label>
+          To
+          <select id="target-language" class="sb-select">
+            <option value="fr">French</option>
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="de">German</option>
+            <option value="hi">Hindi</option>
+          </select>
+        </label>
       </div>
 
       <div class="sb-editor">
@@ -88,14 +137,9 @@
         </label>
         <select id="model-select" class="sb-select">
           <option value="standard">Anovo Fast · Free</option>
-          <option value="gpt-4o">GPT-4o · PRO</option>
-          <option value="gpt-4o-mini">GPT-4o Mini · PRO</option>
-          <option value="Meta-Llama-3.1-405B-Instruct">Llama 405B · PRO</option>
-          <option value="Llama-3.3-70B-Instruct">Llama 3.3 70B · PRO</option>
-          <option value="Meta-Llama-3.1-8B-Instruct">Llama 8B · PRO</option>
-          <option value="Phi-4">Phi-4 · PRO</option>
-          <option value="DeepSeek-R1">DeepSeek R1 · PRO</option>
-          <option value="Cohere-command-r-plus-08-2024">Command R+ · PRO</option>
+          <option value="gpt-oss-120b">GPT-OSS 120B · PRO</option>
+          <option value="gpt-oss-20b">GPT-OSS 20B · PRO</option>
+          <option value="qwen-3.6-27b">Qwen 3.6 27B · PRO Preview</option>
         </select>
       </div>
 
@@ -104,24 +148,19 @@
           <span id="sb-result-label">Result</span>
           <div>
             <button id="sb-copy" class="sb-link-btn">Copy</button>
+            <button id="sb-use-input" class="sb-link-btn">Use as input</button>
             <button id="sb-open" class="sb-link-btn">Open workspace</button>
           </div>
         </div>
-        <div id="sb-output" class="sb-output-box"></div>
+        <textarea id="sb-output" class="sb-output-box" aria-label="Edit result"></textarea>
         <div id="sb-model-used" class="sb-model-used"></div>
       </div>
     </section>
   </main>
 
-  <footer class="sb-footer">
-    <details>
-      <summary>Connection settings</summary>
-      <label for="sb-api-url">API URL</label>
-      <div class="sb-setting-row">
-        <input type="text" id="sb-api-url" class="sb-input" placeholder="https://rushabh13-anovo-api.hf.space" />
-        <button id="sb-save-url" class="sb-btn sb-btn-quiet">Save</button>
-      </div>
-    </details>
+  <footer class="sb-footer sb-footer-links">
+    <span>Results stay editable before you copy or replace them.</span>
+    <a href="https://anovo.vercel.app/privacy" target="_blank" rel="noreferrer">Privacy</a>
   </footer>
 
   <script src="sidebar.js"></script>

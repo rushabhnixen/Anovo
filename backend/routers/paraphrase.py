@@ -26,7 +26,7 @@ def paraphrase_endpoint(
     """
     Paraphrase the given text with adjustable intensity.
 
-    Set `model` to a GitHub Models model name to use premium mode
+    Set `model` to a supported Anovo model profile to use premium mode
     (requires authentication and premium account).
     """
     use_premium = request.model != "standard"

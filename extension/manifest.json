@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Anovo — AI Writing Tool",
-  "version": "1.2.0",
-  "description": "Humanize, paraphrase, grammar check, summarize, translate, and more — right from your browser.",
-  "permissions": ["activeTab", "contextMenus", "storage", "sidePanel"],
+  "version": "1.3.0",
+  "description": "Rewrite and edit selected text with Anovo's unified AI writing workspace.",
+  "permissions": ["activeTab", "contextMenus", "storage", "sidePanel", "scripting"],
+  "host_permissions": ["https://rushabh13-anovo-api.hf.space/*"],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -22,12 +23,5 @@
   },
   "background": {
     "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "css": ["content.css"]
-    }
-  ]
+  }
 }

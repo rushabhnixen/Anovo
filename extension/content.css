@@ -77,9 +77,25 @@
 }
 
 .anovo-result {
+  display: block;
+  width: 100%;
+  min-height: 170px;
+  resize: vertical;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 10px;
+  color: inherit;
+  font: inherit;
   line-height: 1.6;
   white-space: pre-wrap;
   word-break: break-word;
+  outline: none;
+}
+
+.anovo-result:focus {
+  border-color: #34d399;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
 }
 
 .anovo-error {
@@ -133,6 +149,11 @@
 
   .anovo-body {
     color: #e2e8f0;
+  }
+
+  .anovo-result {
+    border-color: #334155;
+    background: #0f172a;
   }
 
   .anovo-footer {

@@ -49,7 +49,7 @@ export default function PromoCodeModal({ open, onClose }: PromoCodeModalProps) {
       >
         <h2 className="text-lg font-semibold mb-1">Redeem Promo Code</h2>
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-          Enter a promo code to unlock Premium mode with the Llama 405B model.
+          Enter a promo code to unlock Premium mode with the latest GPT-OSS and Qwen writing models.
         </p>
 
         {success ? (
@@ -59,7 +59,7 @@ export default function PromoCodeModal({ open, onClose }: PromoCodeModalProps) {
                 Premium activated!
               </p>
               <p className="text-green-600 dark:text-green-400 text-xs mt-1">
-                You now have access to the 405B model on Humanize and Paraphrase.
+                You now have access to all available PRO models on Humanize and Paraphrase.
               </p>
             </div>
             <button

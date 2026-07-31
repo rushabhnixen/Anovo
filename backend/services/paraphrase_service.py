@@ -2,7 +2,7 @@
 Paraphrase service.
 
 Uses LLM (Groq / HF Inference) when available; falls back to local T5 model.
-Premium mode uses GitHub Models (Meta-Llama-3.1-405B-Instruct).
+Premium mode uses the current Groq-hosted Anovo model profiles.
 """
 from __future__ import annotations
 
@@ -72,10 +72,10 @@ def paraphrase(text: str, intensity: int = 3, writing_mode: str = "standard") ->
 def paraphrase_premium(
     text: str,
     intensity: int = 3,
-    model: str = "Meta-Llama-3.1-405B-Instruct",
+    model: str = "gpt-oss-120b",
     writing_mode: str = "standard",
 ) -> tuple[str, str]:
-    """Paraphrase using a premium GitHub Models model. Returns (text, model_used)."""
+    """Paraphrase using a premium writing model. Returns (text, model_used)."""
     try:
         return _paraphrase_llm_premium(text, intensity, model, writing_mode)
     except RuntimeError:

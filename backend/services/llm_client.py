@@ -23,18 +23,28 @@ logger = logging.getLogger(__name__)
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 HF_URL = "https://router.huggingface.co/v1/chat/completions"
-GITHUB_MODELS_URL = "https://models.inference.ai.azure.com/chat/completions"
+# GitHub Models was fully retired on 2026-07-30. Keep stable Anovo profile
+# names and route them through models currently offered on Groq's free tier.
+PREMIUM_MODEL_PROFILES = {
+    "gpt-oss-120b": "openai/gpt-oss-120b",
+    "gpt-oss-20b": "openai/gpt-oss-20b",
+    "qwen-3.6-27b": "qwen/qwen3.6-27b",
+}
 
-GITHUB_MODELS_AVAILABLE = [
-    "gpt-4o",
-    "gpt-4o-mini",
-    "Meta-Llama-3.1-405B-Instruct",
-    "Llama-3.3-70B-Instruct",
-    "Meta-Llama-3.1-8B-Instruct",
-    "Phi-4",
-    "DeepSeek-R1",
-    "Cohere-command-r-plus-08-2024",
-]
+# Existing web/extension clients may retain one of these values in storage.
+# Resolve them instead of returning a hard failure after the provider migration.
+LEGACY_MODEL_ALIASES = {
+    "gpt-4o": "openai/gpt-oss-120b",
+    "gpt-4o-mini": "openai/gpt-oss-20b",
+    "Meta-Llama-3.1-405B-Instruct": "openai/gpt-oss-120b",
+    "Llama-3.3-70B-Instruct": "openai/gpt-oss-120b",
+    "Meta-Llama-3.1-8B-Instruct": "openai/gpt-oss-20b",
+    "Phi-4": "openai/gpt-oss-20b",
+    "DeepSeek-R1": "openai/gpt-oss-120b",
+    "Cohere-command-r-plus-08-2024": "qwen/qwen3.6-27b",
+}
+
+ALLOWED_PREMIUM_MODELS = frozenset(PREMIUM_MODEL_PROFILES.values())
 
 
 class ProviderError(Exception):
@@ -136,45 +146,58 @@ def _rotate_from(start_key: str) -> list[str]:
     return _groq_keys[idx:] + _groq_keys[:idx]
 
 
+def resolve_premium_model(model: str) -> str:
+    """Resolve a stable/legacy selector to an allowed current provider model."""
+    resolved = PREMIUM_MODEL_PROFILES.get(model, LEGACY_MODEL_ALIASES.get(model, model))
+    if resolved not in ALLOWED_PREMIUM_MODELS:
+        raise ValueError(f"Unsupported writing model: {model}")
+    return resolved
+
+
 def llm_chat_premium(
     system_prompt: str,
     user_prompt: str,
-    model: str = "Meta-Llama-3.1-405B-Instruct",
+    model: str = "gpt-oss-120b",
     temperature: float = 0.7,
     max_tokens: int = 4096,
 ) -> tuple[str, str]:
-    """Call a premium model via GitHub Models API.
+    """Call an allowed premium model through Groq.
 
-    Returns (content, model_used).  Falls back to the standard Groq/HF cascade
-    if GitHub PAT is not configured or if the call fails.
+    Returns (content, model_used). Falls back to the standard Groq/HF cascade
+    when the selected model is unavailable or its free-tier limit is reached.
     """
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
 
-    pat = settings.github_pat
-    if pat:
-        logger.info(
-            "Attempting GitHub Models: model=%s, PAT prefix=%s..., url=%s",
-            model, pat[:10], GITHUB_MODELS_URL,
-        )
-        try:
-            content = _call_provider(
-                url=GITHUB_MODELS_URL,
-                api_key=pat,
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                timeout=90.0,
-            )
-            logger.info("GitHub Models (%s) succeeded.", model)
-            return content, model
-        except ProviderError as e:
-            logger.error("GitHub Models (%s) FAILED: %s — falling back to standard.", model, e)
+    resolved_model = resolve_premium_model(model)
+    if _groq_keys:
+        with _groq_lock:
+            start_key = next(_groq_cycle)  # type: ignore[arg-type]
+        for index, key in enumerate(_rotate_from(start_key)):
+            try:
+                content = _call_provider(
+                    url=GROQ_URL,
+                    api_key=key,
+                    model=resolved_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    timeout=60.0,
+                )
+                logger.info("Groq premium model %s succeeded.", resolved_model)
+                return content, resolved_model
+            except ProviderError as exc:
+                logger.warning(
+                    "Groq premium key %d/%d failed for %s: %s",
+                    index + 1,
+                    len(_groq_keys),
+                    resolved_model,
+                    exc,
+                )
     else:
-        logger.warning("GITHUB_PAT not set — skipping premium, using standard cascade.")
+        logger.warning("No Groq key configured — using the standard fallback cascade.")
 
     # Fallback: use the standard Groq -> HF cascade
     content = llm_chat_messages(messages, temperature=temperature, max_tokens=max_tokens)

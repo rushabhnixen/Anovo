@@ -4,13 +4,27 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db
 from models.db_models import HistoryEntry, User
-from models.schemas import AdminStatsResponse, AdminUserUpdate, UserResponse
+from models.schemas import (
+    AdminModelInfo,
+    AdminModelsResponse,
+    AdminStatsResponse,
+    AdminUserUpdate,
+    UserResponse,
+)
 from routers.auth import _current_user_id
 from services.auth_service import get_user_by_id
+from services.llm_client import PREMIUM_MODEL_PROFILES
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+MODEL_LABELS = {
+    "gpt-oss-120b": "GPT-OSS 120B",
+    "gpt-oss-20b": "GPT-OSS 20B",
+    "qwen-3.6-27b": "Qwen 3.6 27B",
+}
 
 
 def _require_admin(
@@ -93,4 +107,25 @@ def get_stats(
         premium_users=premium_users,
         admin_users=admin_users,
         total_history_entries=total_history,
+    )
+
+
+@router.get("/models", response_model=AdminModelsResponse, summary="Writing model status")
+def model_status(
+    admin: User = Depends(_require_admin),
+) -> AdminModelsResponse:
+    """Return safe, non-secret provider information for the admin dashboard."""
+    return AdminModelsResponse(
+        provider="Groq",
+        provider_configured=bool(settings.groq_api_keys or settings.groq_api_key),
+        standard_model=settings.groq_model,
+        models=[
+            AdminModelInfo(
+                id=profile,
+                label=MODEL_LABELS[profile],
+                provider_model=provider_model,
+                status="preview" if profile == "qwen-3.6-27b" else "production",
+            )
+            for profile, provider_model in PREMIUM_MODEL_PROFILES.items()
+        ],
     )

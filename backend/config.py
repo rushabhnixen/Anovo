@@ -20,15 +20,18 @@ class Settings(BaseSettings):
     # e.g. GROQ_API_KEYS=gsk_key1,gsk_key2,gsk_key3,gsk_key4
     groq_api_key: str = ""       # single key (backward compatible)
     groq_api_keys: str = ""      # comma-separated list of keys
-    groq_model: str = "llama-3.3-70b-versatile"
+    # Llama 3.3 70B is scheduled to shut down on Groq free/developer tiers on
+    # 2026-08-16. GPT-OSS 20B is the supported low-latency replacement.
+    groq_model: str = "openai/gpt-oss-20b"
 
     # HuggingFace Inference API — middle-tier fallback between Groq and local
     hf_api_token: str = ""
-    hf_model: str = "mistralai/Mistral-7B-Instruct-v0.3"
+    hf_model: str = "openai/gpt-oss-20b:fastest"
 
-    # GitHub Models (premium tier) — Meta-Llama-3.1-405B-Instruct
+    # Retained only so older deployments can boot while the secret is removed.
+    # GitHub Models was retired on 2026-07-30 and is no longer called.
     github_pat: str = ""
-    github_model: str = "Meta-Llama-3.1-405B-Instruct"
+    github_model: str = "gpt-oss-120b"
 
     # Premium promo codes (comma-separated)
     premium_promo_codes: str = ""

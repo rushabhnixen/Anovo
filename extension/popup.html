@@ -32,17 +32,14 @@
     .result { display:none; border-top:1px solid var(--line); }
     .result.visible { display:block; }
     .result-head { display:flex; justify-content:space-between; align-items:center; padding:8px 11px; font-size:11px; font-weight:800; }
-    .result-box { max-height:190px; overflow:auto; border-top:1px solid #f1f5f9; background:#f8fafc; padding:11px; white-space:pre-wrap; line-height:1.6; }
+    .result-box { display:block; width:100%; min-height:145px; max-height:240px; resize:vertical; overflow:auto; border:0; border-top:1px solid #f1f5f9; background:#f8fafc; color:var(--text); padding:11px; white-space:pre-wrap; line-height:1.6; outline:0; }
+    .result-box:focus { box-shadow:inset 0 0 0 2px rgb(16 185 129/.3); }
     .result-actions { display:flex; gap:6px; padding:8px 10px; }
     .loading { display:flex; align-items:center; gap:8px; color:var(--muted); }
     .spinner { width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--brand); border-radius:50%; animation:spin .7s linear infinite; }
     .error { color:#dc2626; }
     .footer { display:flex; align-items:center; justify-content:space-between; gap:8px; padding-top:10px; }
     .footer a { color:var(--brand2); font-size:11px; font-weight:700; text-decoration:none; }
-    details { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
-    summary { color:var(--muted); font-size:10px; cursor:pointer; }
-    .setting { display:flex; gap:6px; margin-top:7px; }
-    .setting input { min-width:0; flex:1; font-size:11px; }
     @keyframes spin { to { transform:rotate(360deg); } }
     @media(prefers-color-scheme:dark){ :root{--panel:#0f172a;--bg:#020617;--line:#263449;--muted:#94a3b8;--text:#e2e8f0}.header{background:rgb(15 23 42/.9)}.version,button{background:#1e293b}.result-box{background:#0b1220;border-color:#172033} }
   </style>
@@ -50,7 +47,7 @@
 <body>
   <header class="header">
     <div class="brand"><span class="logo">A</span><span><strong>Anovo</strong><small>Quick workspace</small></span></div>
-    <span class="version">v1.2</span>
+    <span class="version">v1.3</span>
   </header>
   <div class="wrap">
     <section class="card">
@@ -71,7 +68,7 @@
       </div>
       <div id="output-area" class="result">
         <div class="result-head"><span id="result-label">Result</span></div>
-        <div id="output" class="result-box"></div>
+        <textarea id="output" class="result-box" aria-label="Edit result"></textarea>
         <div class="result-actions">
           <button id="copy-btn">Copy</button>
           <button id="open-btn">Open full workspace</button>
@@ -82,13 +79,6 @@
       <a href="#" id="sidebar-toggle">Open sidebar workspace</a>
       <a href="https://anovo.vercel.app" target="_blank" rel="noreferrer">anovo.vercel.app ↗</a>
     </div>
-    <details>
-      <summary>Connection settings</summary>
-      <div class="setting">
-        <input type="text" id="api-url" aria-label="API URL" placeholder="https://rushabh13-anovo-api.hf.space" />
-        <button id="save-settings">Save</button>
-      </div>
-    </details>
   </div>
   <script src="popup.js"></script>
 </body>

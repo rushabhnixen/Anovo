@@ -36,21 +36,44 @@
   const resultLabel = document.getElementById("sb-result-label");
   const copyBtn = document.getElementById("sb-copy");
   const openBtn = document.getElementById("sb-open");
+  const useInputBtn = document.getElementById("sb-use-input");
   const modelUsedEl = document.getElementById("sb-model-used");
-  const apiUrlInput = document.getElementById("sb-api-url");
-  const saveUrlBtn = document.getElementById("sb-save-url");
+  const intensityInput = document.getElementById("intensity");
+  const intensityValue = document.getElementById("intensity-value");
+  const summaryMode = document.getElementById("summary-mode");
+  const summaryLength = document.getElementById("summary-length");
+  const sourceLanguage = document.getElementById("source-language");
+  const targetLanguage = document.getElementById("target-language");
 
   let currentMode = "standard";
   let authToken = null;
   let userData = null;
   let currentResult = "";
 
-  chrome.storage.local.get(["apiUrl", "authToken", "workspaceTool", "workspaceMode", "workspaceModel"], async (items) => {
-    apiUrlInput.value = items.apiUrl || DEFAULT_API;
+  chrome.storage.local.get([
+    "authToken",
+    "workspaceTool",
+    "workspaceMode",
+    "workspaceModel",
+    "workspaceIntensity",
+    "summaryMode",
+    "summaryLength",
+    "sourceLanguage",
+    "targetLanguage",
+  ], async (items) => {
     toolSelect.value = items.workspaceTool || "paraphrase";
     currentMode = items.workspaceMode || "standard";
     modes.forEach((mode) => mode.classList.toggle("active", mode.dataset.mode === currentMode));
-    modelSelect.value = items.workspaceModel || "standard";
+    const storedModel = items.workspaceModel || "standard";
+    modelSelect.value = Array.from(modelSelect.options).some((option) => option.value === storedModel)
+      ? storedModel
+      : "standard";
+    intensityInput.value = items.workspaceIntensity || "3";
+    intensityValue.textContent = intensityInput.value;
+    summaryMode.value = items.summaryMode || "paragraph";
+    summaryLength.value = items.summaryLength || "150";
+    sourceLanguage.value = items.sourceLanguage || "en";
+    targetLanguage.value = items.targetLanguage || "fr";
     updateToolUI();
     if (items.authToken) {
       authToken = items.authToken;
@@ -77,6 +100,15 @@
   modelSelect.addEventListener("change", () => {
     chrome.storage.local.set({ workspaceModel: modelSelect.value });
   });
+
+  intensityInput.addEventListener("input", () => {
+    intensityValue.textContent = intensityInput.value;
+    chrome.storage.local.set({ workspaceIntensity: intensityInput.value });
+  });
+  summaryMode.addEventListener("change", () => chrome.storage.local.set({ summaryMode: summaryMode.value }));
+  summaryLength.addEventListener("change", () => chrome.storage.local.set({ summaryLength: summaryLength.value }));
+  sourceLanguage.addEventListener("change", () => chrome.storage.local.set({ sourceLanguage: sourceLanguage.value }));
+  targetLanguage.addEventListener("change", () => chrome.storage.local.set({ targetLanguage: targetLanguage.value }));
 
   input.addEventListener("input", updateCount);
   input.addEventListener("keydown", (event) => {
@@ -166,7 +198,7 @@
 
   function updateModelAccess() {
     const premium = Boolean(userData?.is_premium);
-    modelLock.textContent = premium ? "8 models unlocked" : "Sign in for PRO";
+    modelLock.textContent = premium ? "3 models unlocked" : "Sign in for PRO";
     Array.from(modelSelect.options).forEach((option) => {
       option.disabled = option.value !== "standard" && !premium;
     });
@@ -179,6 +211,9 @@
     processBtn.textContent = labels.action;
     resultLabel.textContent = labels.result;
     modeRow.hidden = tool !== "paraphrase";
+    document.getElementById("paraphrase-controls").hidden = tool !== "paraphrase";
+    document.getElementById("summary-controls").hidden = tool !== "summarize";
+    document.getElementById("translation-controls").hidden = tool !== "translate";
     document.getElementById("model-section").hidden = tool !== "paraphrase" && tool !== "humanize";
     input.placeholder = `Paste or type text to ${labels.action.toLowerCase()}…`;
   }
@@ -200,7 +235,8 @@
   async function processText(tool, text) {
     outputArea.hidden = false;
     outputEl.classList.remove("sb-error");
-    outputEl.innerHTML = '<div class="sb-loading"><div class="sb-spinner"></div>Processing…</div>';
+    outputEl.value = "Processing…";
+    outputEl.readOnly = true;
     currentResult = "";
     modelUsedEl.textContent = "";
     processBtn.disabled = true;
@@ -224,14 +260,16 @@
 
       const data = await response.json();
       currentResult = formatResult(tool, data, text);
-      outputEl.textContent = currentResult;
+      outputEl.value = currentResult;
+      outputEl.readOnly = false;
       modelUsedEl.textContent = data.model_used && data.model_used !== "standard"
         ? `Processed with ${data.model_used}`
         : selectedModel !== "standard"
           ? "PRO model unavailable — Anovo Fast completed this result"
           : "";
     } catch (error) {
-      outputEl.textContent = error.message;
+      outputEl.value = error.message;
+      outputEl.readOnly = true;
       outputEl.classList.add("sb-error");
     } finally {
       processBtn.disabled = false;
@@ -242,10 +280,10 @@
   function getEndpoint(tool, text, model) {
     const endpoints = {
       humanize: { path: "/api/humanize", body: { text, model } },
-      paraphrase: { path: "/api/paraphrase", body: { text, intensity: 3, model, writing_mode: currentMode } },
+      paraphrase: { path: "/api/paraphrase", body: { text, intensity: Number(intensityInput.value), model, writing_mode: currentMode } },
       grammar: { path: "/api/grammar-check", body: { text, language: "en-US" } },
-      summarize: { path: "/api/summarize", body: { text, mode: "paragraph", max_length: 150 } },
-      translate: { path: "/api/translate", body: { text, source_language: "en", target_language: "fr" } },
+      summarize: { path: "/api/summarize", body: { text, mode: summaryMode.value, max_length: Number(summaryLength.value) } },
+      translate: { path: "/api/translate", body: { text, source_language: sourceLanguage.value, target_language: targetLanguage.value } },
       tone: { path: "/api/tone-detect", body: { text } },
     };
     return endpoints[tool];
@@ -272,8 +310,8 @@
   }
 
   copyBtn.addEventListener("click", async () => {
-    if (!currentResult) return;
-    await navigator.clipboard.writeText(currentResult);
+    if (!outputEl.value || outputEl.classList.contains("sb-error")) return;
+    await navigator.clipboard.writeText(outputEl.value);
     copyBtn.textContent = "Copied";
     window.setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
   });
@@ -282,15 +320,14 @@
     chrome.tabs.create({ url: "https://anovo.vercel.app" });
   });
 
-  saveUrlBtn.addEventListener("click", async () => {
-    const url = apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API;
-    await chrome.storage.local.set({ apiUrl: url });
-    apiUrlInput.value = url;
-    saveUrlBtn.textContent = "Saved";
-    window.setTimeout(() => { saveUrlBtn.textContent = "Save"; }, 1500);
+  useInputBtn.addEventListener("click", () => {
+    if (!outputEl.value || outputEl.classList.contains("sb-error")) return;
+    input.value = outputEl.value;
+    updateCount();
+    input.focus();
   });
 
   function getApiUrl() {
-    return apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API;
+    return DEFAULT_API;
   }
 })();

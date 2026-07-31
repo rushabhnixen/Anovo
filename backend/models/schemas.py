@@ -7,7 +7,7 @@ from typing import Literal, Optional
 class ParaphraseRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
-    model: str = Field("standard", description="Model to use: 'standard' or a GitHub Models model name")
+    model: str = Field("standard", description="Model to use: 'standard' or a supported Anovo model profile")
     writing_mode: Literal[
         "standard", "fluency", "formal", "simple", "creative",
         "academic", "expand", "shorten", "humanize",
@@ -95,7 +95,7 @@ class TranslateResponse(BaseModel):
 
 class HumanizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=10000, description="Text to humanize")
-    model: str = Field("standard", description="Model to use: 'standard' or a GitHub Models model name")
+    model: str = Field("standard", description="Model to use: 'standard' or a supported Anovo model profile")
 
 
 class HumanizeResponse(BaseModel):
@@ -230,3 +230,17 @@ class AdminStatsResponse(BaseModel):
     premium_users: int
     admin_users: int
     total_history_entries: int
+
+
+class AdminModelInfo(BaseModel):
+    id: str
+    label: str
+    provider_model: str
+    status: Literal["production", "preview"]
+
+
+class AdminModelsResponse(BaseModel):
+    provider: str
+    provider_configured: bool
+    standard_model: str
+    models: list[AdminModelInfo]

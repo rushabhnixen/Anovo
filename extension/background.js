@@ -11,26 +11,27 @@ const TOOLS = [
 
 // Create context menu items and register side panel on install
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "anovo-parent",
-    title: "Anovo",
-    contexts: ["selection"],
-  });
-
-  for (const tool of TOOLS) {
+  chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
-      id: `anovo-${tool.id}`,
-      parentId: "anovo-parent",
-      title: tool.title,
+      id: "anovo-parent",
+      title: "Anovo",
       contexts: ["selection"],
     });
-  }
 
-  // Add "Open Sidebar" to context menu
-  chrome.contextMenus.create({
-    id: "anovo-sidebar",
-    title: "Open Anovo Sidebar",
-    contexts: ["page", "selection"],
+    for (const tool of TOOLS) {
+      chrome.contextMenus.create({
+        id: `anovo-${tool.id}`,
+        parentId: "anovo-parent",
+        title: tool.title,
+        contexts: ["selection"],
+      });
+    }
+
+    chrome.contextMenus.create({
+      id: "anovo-sidebar",
+      title: "Open Anovo Sidebar",
+      contexts: ["page", "selection"],
+    });
   });
 
   // Enable side panel
@@ -57,12 +58,28 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
   if (!text.trim()) return;
 
-  chrome.tabs.sendMessage(tab.id, {
-    action: "process",
-    tool: toolId,
-    text: text,
-  });
+  showSelectionWorkspace(tab.id, toolId, text);
 });
+
+async function showSelectionWorkspace(tabId, tool, text) {
+  try {
+    await chrome.scripting.insertCSS({
+      target: { tabId },
+      files: ["content.css"],
+    });
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content.js"],
+    });
+    await chrome.tabs.sendMessage(tabId, {
+      action: "process",
+      tool,
+      text,
+    });
+  } catch (error) {
+    console.warn("Anovo cannot run on this browser page.", error);
+  }
+}
 
 // Listen for messages from popup to open sidebar
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

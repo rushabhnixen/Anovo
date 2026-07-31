@@ -23,13 +23,10 @@
   const copyBtn = document.getElementById("copy-btn");
   const openBtn = document.getElementById("open-btn");
   const sidebarToggle = document.getElementById("sidebar-toggle");
-  const apiUrlInput = document.getElementById("api-url");
-  const saveBtn = document.getElementById("save-settings");
 
   let currentResult = "";
 
-  chrome.storage.local.get(["apiUrl", "workspaceTool"], (items) => {
-    apiUrlInput.value = items.apiUrl || DEFAULT_API;
+  chrome.storage.local.get(["workspaceTool"], (items) => {
     toolEl.value = items.workspaceTool || "paraphrase";
     updateTool();
   });
@@ -67,7 +64,8 @@
     const tool = toolEl.value;
     outputArea.classList.add("visible");
     outputEl.classList.remove("error");
-    outputEl.innerHTML = '<div class="loading"><span class="spinner"></span>Processing…</div>';
+    outputEl.value = "Processing…";
+    outputEl.readOnly = true;
     processBtn.disabled = true;
     processBtn.textContent = "Working…";
     currentResult = "";
@@ -85,9 +83,11 @@
       }
       const data = await response.json();
       currentResult = formatResult(tool, data, text);
-      outputEl.textContent = currentResult;
+      outputEl.value = currentResult;
+      outputEl.readOnly = false;
     } catch (error) {
-      outputEl.textContent = error.message;
+      outputEl.value = error.message;
+      outputEl.readOnly = true;
       outputEl.classList.add("error");
     } finally {
       processBtn.disabled = false;
@@ -125,8 +125,8 @@
   }
 
   copyBtn.addEventListener("click", async () => {
-    if (!currentResult) return;
-    await navigator.clipboard.writeText(currentResult);
+    if (!outputEl.value || outputEl.classList.contains("error")) return;
+    await navigator.clipboard.writeText(outputEl.value);
     copyBtn.textContent = "Copied";
     setTimeout(() => { copyBtn.textContent = "Copy"; }, 1500);
   });
@@ -138,15 +138,7 @@
     window.close();
   });
 
-  saveBtn.addEventListener("click", async () => {
-    const url = getApiUrl();
-    await chrome.storage.local.set({ apiUrl: url });
-    apiUrlInput.value = url;
-    saveBtn.textContent = "Saved";
-    setTimeout(() => { saveBtn.textContent = "Save"; }, 1500);
-  });
-
   function getApiUrl() {
-    return apiUrlInput.value.trim().replace(/\/+$/, "") || DEFAULT_API;
+    return DEFAULT_API;
   }
 })();

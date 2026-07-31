@@ -26,7 +26,7 @@ app = FastAPI(
         "translation, AI text humanization, plagiarism detection, "
         "tone analysis, co-writing, AI chat, and user accounts."
     ),
-    version="2.0.0",
+    version="2.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
@@ -67,7 +67,7 @@ def health_check() -> dict:
         "providers": {
             "groq": bool(settings.groq_api_keys or settings.groq_api_key),
             "hf": bool(settings.hf_api_token),
-            "github_models": bool(settings.github_pat),
+            "premium_models": bool(settings.groq_api_keys or settings.groq_api_key),
         },
         "db": settings.database_url.split("///")[-1] if "sqlite" in settings.database_url else "postgres",
     }

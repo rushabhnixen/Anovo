@@ -5,7 +5,7 @@ Uses LLM (Groq / HF Inference) for high-quality humanization when available.
 Processes large texts by chunking into paragraphs and humanizing each chunk
 separately, then reassembling. Falls back to a local pipeline otherwise.
 
-Premium mode uses GitHub Models for superior rewriting quality.
+Premium mode uses the current Groq-hosted Anovo model profiles.
 """
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ def humanize(text: str) -> dict:
         return result
 
 
-def humanize_premium(text: str, model: str = "Meta-Llama-3.1-405B-Instruct") -> dict:
-    """Humanize using a premium GitHub Models model."""
+def humanize_premium(text: str, model: str = "gpt-oss-120b") -> dict:
+    """Humanize using a premium writing model."""
     try:
         return _humanize_llm_premium(text, model)
     except RuntimeError:

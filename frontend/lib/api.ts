@@ -392,6 +392,18 @@ export interface AdminStatsResponse {
   total_history_entries: number;
 }
 
+export interface AdminModelsResponse {
+  provider: string;
+  provider_configured: boolean;
+  standard_model: string;
+  models: Array<{
+    id: string;
+    label: string;
+    provider_model: string;
+    status: "production" | "preview";
+  }>;
+}
+
 export const getAdminUsers = (token: string, skip = 0, limit = 50, search = "") =>
   getAuth<UserResponse[]>(`/api/admin/users?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`, token);
 
@@ -403,3 +415,6 @@ export const deleteAdminUser = (token: string, userId: number) =>
 
 export const getAdminStats = (token: string) =>
   getAuth<AdminStatsResponse>("/api/admin/stats", token);
+
+export const getAdminModels = (token: string) =>
+  getAuth<AdminModelsResponse>("/api/admin/models", token);

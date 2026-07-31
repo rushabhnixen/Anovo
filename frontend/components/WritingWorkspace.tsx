@@ -162,6 +162,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
   const [refineError, setRefineError] = useState("");
   const [undoStack, setUndoStack] = useState<Array<{ output: string; compareOutput: string }>>([]);
   const [redoStack, setRedoStack] = useState<Array<{ output: string; compareOutput: string }>>([]);
+  const [isEditingOutput, setIsEditingOutput] = useState(false);
   const [copied, setCopied] = useState(false);
   const [grammarLanguage, setGrammarLanguage] = useState("en-US");
   const [summaryMode, setSummaryMode] = useState<"paragraph" | "bullet">("paragraph");
@@ -201,6 +202,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setError("");
     setUndoStack([]);
     setRedoStack([]);
+    setIsEditingOutput(false);
     closeSuggestions();
   };
 
@@ -337,6 +339,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setActiveVariant("primary");
     setUndoStack([]);
     setRedoStack([]);
+    setIsEditingOutput(false);
     closeSuggestions();
     suggestionCache.current.clear();
 
@@ -370,6 +373,19 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     closeSuggestions();
   };
 
+  const beginOutputEdit = () => {
+    if (!displayOutput || isEditingOutput) return;
+    setUndoStack((stack) => [...stack, { output, compareOutput }]);
+    setRedoStack([]);
+    setIsEditingOutput(true);
+    closeSuggestions();
+  };
+
+  const updateOutputDraft = (nextOutput: string) => {
+    if (activeVariant === "primary") setOutput(nextOutput);
+    else setCompareOutput(nextOutput);
+  };
+
   const applySuggestion = (suggestion: string) => {
     if (!activeSelection) return;
     if (activeSelection.kind === "word") {
@@ -390,6 +406,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setUndoStack((stack) => stack.slice(0, -1));
     setOutput(previous.output);
     setCompareOutput(previous.compareOutput);
+    setIsEditingOutput(false);
     closeSuggestions();
   };
 
@@ -400,6 +417,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setRedoStack((stack) => stack.slice(1));
     setOutput(next.output);
     setCompareOutput(next.compareOutput);
+    setIsEditingOutput(false);
     closeSuggestions();
   };
 
@@ -729,6 +747,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                       type="button"
                       onClick={() => {
                         setActiveVariant("primary");
+                        setIsEditingOutput(false);
                         closeSuggestions();
                       }}
                       className={`rounded-md px-2 py-1 text-[10px] font-bold ${
@@ -743,6 +762,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                       type="button"
                       onClick={() => {
                         setActiveVariant("baseline");
+                        setIsEditingOutput(false);
                         closeSuggestions();
                       }}
                       className={`rounded-md px-2 py-1 text-[10px] font-bold ${
@@ -757,6 +777,27 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                 ) : null}
               </div>
               <div className="flex items-center gap-1">
+                {displayOutput || isEditingOutput ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isEditingOutput) {
+                        setIsEditingOutput(false);
+                        closeSuggestions();
+                      } else {
+                        beginOutputEdit();
+                      }
+                    }}
+                    aria-pressed={isEditingOutput}
+                    className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition ${
+                      isEditingOutput
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900"
+                    }`}
+                  >
+                    {isEditingOutput ? "Done" : "Edit"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={undo}
@@ -793,6 +834,20 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                   <div className="h-4 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                   <div className="h-4 w-8/12 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
                 </div>
+              ) : isEditingOutput ? (
+                <textarea
+                  value={displayOutput}
+                  onChange={(event) => updateOutputDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setIsEditingOutput(false);
+                    }
+                  }}
+                  autoFocus
+                  aria-label={`Edit ${toolConfig.outputLabel.toLocaleLowerCase()}`}
+                  className="min-h-[390px] w-full resize-none bg-transparent text-[15px] leading-7 text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-200"
+                />
               ) : displayOutput ? (
                 <div className="whitespace-pre-wrap">
                   {sentences.map((sentence, sentenceIndex) => {
@@ -827,7 +882,9 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
             <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-5 py-2.5 text-xs text-slate-400 dark:border-slate-900 dark:bg-slate-950">
               <span>{displayOutput ? `${wordCount(displayOutput)} words` : "Ready"}</span>
               <span className="text-right">
-                {resultMeta || (supportsRefinement && displayOutput ? "Click highlighted text for alternatives" : "")}
+                {isEditingOutput
+                  ? "Editing result · press Escape or Done when finished"
+                  : resultMeta || (supportsRefinement && displayOutput ? "Click highlighted text for alternatives" : "")}
               </span>
             </div>
           </div>
@@ -839,6 +896,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
               <>
                 <span><span className="mr-1.5 inline-block h-0.5 w-4 bg-emerald-500 align-middle" />Changed words are underlined</span>
                 <span>Alternatives open beside your selection</span>
+                <span>Edit the full result directly at any time</span>
               </>
             ) : (
               <span>Switch tools above—the source text stays in this editor.</span>

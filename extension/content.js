@@ -3,13 +3,17 @@
 (function () {
   "use strict";
 
+  if (window.__ANOVO_CONTENT_SCRIPT__) return;
+  window.__ANOVO_CONTENT_SCRIPT__ = true;
+
   let overlay = null;
+  let selectionContext = null;
+  const DEFAULT_API = "https://rushabh13-anovo-api.hf.space";
 
   function getSettings() {
     return new Promise((resolve) => {
       chrome.storage.local.get(
         {
-          apiUrl: "https://rushabh13-anovo-api.hf.space",
           authToken: null,
           workspaceModel: "standard",
           workspaceMode: "standard",
@@ -43,7 +47,7 @@
       headers.Authorization = `Bearer ${settings.authToken}`;
     }
 
-    const resp = await fetch(`${settings.apiUrl}${ep.path}`, {
+    const resp = await fetch(`${DEFAULT_API}${ep.path}`, {
       method: "POST",
       headers,
       body: JSON.stringify(ep.body),
@@ -74,6 +78,7 @@
   }
 
   function showOverlay(text, tool) {
+    selectionContext = captureSelection();
     removeOverlay();
 
     overlay = document.createElement("div");
@@ -96,27 +101,15 @@
     `;
 
     document.body.appendChild(overlay);
-    positionOverlay(overlay);
+    positionOverlay(overlay, selectionContext?.rect);
 
     overlay.querySelector(".anovo-close").addEventListener("click", removeOverlay);
 
     return overlay;
   }
 
-  function positionOverlay(element) {
-    const selection = window.getSelection();
-    let anchor = null;
-
-    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-      anchor = selection.getRangeAt(0).getBoundingClientRect();
-    }
-
-    if (!anchor || (!anchor.width && !anchor.height)) {
-      const active = document.activeElement;
-      if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT" || active.isContentEditable)) {
-        anchor = active.getBoundingClientRect();
-      }
-    }
+  function positionOverlay(element, savedRect) {
+    let anchor = savedRect;
 
     if (!anchor) {
       anchor = { left: window.innerWidth - 440, right: window.innerWidth - 20, top: 20, bottom: 20, width: 420, height: 0 };
@@ -136,26 +129,31 @@
     element.style.right = "auto";
   }
 
-  function updateOverlay(result, originalText) {
+  function updateOverlay(result) {
     if (!overlay) return;
     const body = overlay.querySelector(".anovo-body");
-    body.innerHTML = `<div class="anovo-result">${escapeHtml(result)}</div>`;
+    body.innerHTML = '<textarea class="anovo-result" aria-label="Edit Anovo result"></textarea>';
+    const resultEditor = body.querySelector(".anovo-result");
+    resultEditor.value = result;
 
     const copyBtn = overlay.querySelector(".anovo-btn-copy");
     const replaceBtn = overlay.querySelector(".anovo-btn-replace");
 
     copyBtn.style.display = "inline-block";
     copyBtn.addEventListener("click", () => {
-      navigator.clipboard.writeText(result);
+      navigator.clipboard.writeText(resultEditor.value);
       copyBtn.textContent = "Copied!";
       setTimeout(() => (copyBtn.textContent = "Copy"), 1500);
     });
 
-    replaceBtn.style.display = "inline-block";
-    replaceBtn.addEventListener("click", () => {
-      replaceSelectedText(result);
-      removeOverlay();
-    });
+    if (selectionContext?.editable) {
+      replaceBtn.style.display = "inline-block";
+      replaceBtn.addEventListener("click", () => {
+        replaceSelectedText(resultEditor.value);
+        removeOverlay();
+      });
+    }
+    resultEditor.focus();
   }
 
   function showError(message) {
@@ -171,28 +169,51 @@
     }
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML.replace(/\n/g, "<br>");
-  }
-
-  function replaceSelectedText(newText) {
+  function captureSelection() {
     const active = document.activeElement;
     if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) {
       const start = active.selectionStart;
       const end = active.selectionEnd;
-      active.value = active.value.slice(0, start) + newText + active.value.slice(end);
-      active.selectionStart = start;
-      active.selectionEnd = start + newText.length;
-      active.dispatchEvent(new Event("input", { bubbles: true }));
-    } else if (active?.getAttribute("contenteditable") === "true") {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(newText));
-      }
+      return {
+        editable: start !== end,
+        element: active,
+        start,
+        end,
+        rect: active.getBoundingClientRect(),
+      };
+    }
+
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+      const range = selection.getRangeAt(0).cloneRange();
+      const editable = range.commonAncestorContainer.parentElement?.closest("[contenteditable='true']");
+      return {
+        editable: Boolean(editable),
+        element: editable,
+        range,
+        rect: range.getBoundingClientRect(),
+      };
+    }
+    return null;
+  }
+
+  function replaceSelectedText(newText) {
+    if (!selectionContext?.editable) return;
+    const target = selectionContext.element;
+    if (target && (target.tagName === "TEXTAREA" || target.tagName === "INPUT")) {
+      const { start, end } = selectionContext;
+      target.value = target.value.slice(0, start) + newText + target.value.slice(end);
+      target.selectionStart = start;
+      target.selectionEnd = start + newText.length;
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      target.dispatchEvent(new Event("change", { bubbles: true }));
+      target.focus();
+    } else if (selectionContext.range) {
+      const range = selectionContext.range;
+      range.deleteContents();
+      const node = document.createTextNode(newText);
+      range.insertNode(node);
+      target?.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: newText }));
     }
   }
 
@@ -203,7 +224,7 @@
     showOverlay(msg.text, msg.tool);
 
     callApi(msg.tool, msg.text)
-      .then((result) => updateOverlay(result, msg.text))
+      .then((result) => updateOverlay(result))
       .catch((err) => showError(err.message));
   });
 })();
