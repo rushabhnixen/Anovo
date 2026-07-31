@@ -277,6 +277,9 @@ export interface ToneResponse {
 export interface CoWriterResponse {
   prompt: string;
   suggestions: string[];
+  action: string;
+  tone: string;
+  model_used: string;
 }
 
 export interface ChatMessage {
@@ -297,8 +300,20 @@ export const checkPlagiarism = (text: string, reference_text: string) =>
 export const detectTone = (text: string) =>
   post<ToneResponse>("/api/tone-detect", { text });
 
-export const coWrite = (text: string, max_tokens: number, num_suggestions: number) =>
-  post<CoWriterResponse>("/api/co-write", { text, max_tokens, num_suggestions });
+export const coWrite = (
+  text: string,
+  max_tokens: number,
+  num_suggestions: number,
+  action = "continue",
+  tone = "match",
+  model = "standard",
+  token?: string,
+) => {
+  const body = { text, max_tokens, num_suggestions, action, tone, model };
+  return model !== "standard" && token
+    ? postAuth<CoWriterResponse>("/api/co-write", body, token)
+    : post<CoWriterResponse>("/api/co-write", body);
+};
 
 export const chatWithAI = (message: string, mode: string, history: ChatMessage[]) =>
   post<ChatResponse>("/api/chat", { message, mode, history });
@@ -391,6 +406,23 @@ export interface AdminStatsResponse {
   admin_users: number;
   total_history_entries: number;
 }
+
+export interface DocExtractResponse {
+  text: string;
+  filename: string;
+  character_count: number;
+}
+
+export const extractDocument = async (file: File): Promise<DocExtractResponse> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_URL}/api/documents/extract`, { method: "POST", body: formData });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail ?? "Could not read this document");
+  }
+  return res.json() as Promise<DocExtractResponse>;
+};
 
 export interface AdminModelsResponse {
   provider: string;

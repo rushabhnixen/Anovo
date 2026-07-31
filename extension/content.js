@@ -17,6 +17,11 @@
           authToken: null,
           workspaceModel: "standard",
           workspaceMode: "standard",
+          workspaceIntensity: "3",
+          summaryMode: "paragraph",
+          summaryLength: "150",
+          sourceLanguage: "auto",
+          targetLanguage: "fr",
         },
         (items) => resolve(items)
       );
@@ -30,12 +35,12 @@
       humanize: { path: "/api/humanize", body: { text, model: selectedModel }, field: "humanized" },
       paraphrase: {
         path: "/api/paraphrase",
-        body: { text, intensity: 3, model: selectedModel, writing_mode: settings.workspaceMode },
+        body: { text, intensity: Number(settings.workspaceIntensity), model: selectedModel, writing_mode: settings.workspaceMode },
         field: "paraphrased",
       },
       grammar: { path: "/api/grammar-check", body: { text, language: "en-US" }, field: null },
-      summarize: { path: "/api/summarize", body: { text, mode: "paragraph", max_length: 150 }, field: "summary" },
-      translate: { path: "/api/translate", body: { text, source_language: "en", target_language: "fr" }, field: "translated" },
+      summarize: { path: "/api/summarize", body: { text, mode: settings.summaryMode, max_length: Number(settings.summaryLength) }, field: "summary" },
+      translate: { path: "/api/translate", body: { text, source_language: settings.sourceLanguage, target_language: settings.targetLanguage }, field: "translated" },
       tone: { path: "/api/tone-detect", body: { text }, field: null },
     };
 
@@ -97,6 +102,8 @@
       <div class="anovo-footer">
         <button class="anovo-btn anovo-btn-copy" style="display:none">Copy</button>
         <button class="anovo-btn anovo-btn-replace" style="display:none">Replace</button>
+        <button class="anovo-btn anovo-btn-retry" style="display:none">Regenerate</button>
+        <button class="anovo-btn anovo-btn-sidebar">Open sidebar</button>
       </div>
     `;
 
@@ -104,6 +111,11 @@
     positionOverlay(overlay, selectionContext?.rect);
 
     overlay.querySelector(".anovo-close").addEventListener("click", removeOverlay);
+    overlay.querySelector(".anovo-btn-retry").addEventListener("click", () => processOverlay(text, tool));
+    overlay.querySelector(".anovo-btn-sidebar").addEventListener("click", () => {
+      chrome.runtime.sendMessage({ action: "openSidebar" });
+      removeOverlay();
+    });
 
     return overlay;
   }
@@ -138,8 +150,10 @@
 
     const copyBtn = overlay.querySelector(".anovo-btn-copy");
     const replaceBtn = overlay.querySelector(".anovo-btn-replace");
+    const retryBtn = overlay.querySelector(".anovo-btn-retry");
 
     copyBtn.style.display = "inline-block";
+    retryBtn.style.display = "inline-block";
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(resultEditor.value);
       copyBtn.textContent = "Copied!";
@@ -166,6 +180,21 @@
     if (overlay) {
       overlay.remove();
       overlay = null;
+    }
+  }
+
+  async function processOverlay(text, tool) {
+    if (!overlay) return;
+    const body = overlay.querySelector(".anovo-body");
+    body.innerHTML = '<div class="anovo-loading"><div class="anovo-spinner"></div>Processing...</div>';
+    overlay.querySelector(".anovo-btn-copy").style.display = "none";
+    overlay.querySelector(".anovo-btn-replace").style.display = "none";
+    overlay.querySelector(".anovo-btn-retry").style.display = "none";
+    try {
+      updateOverlay(await callApi(tool, text));
+    } catch (error) {
+      showError(error.message);
+      overlay.querySelector(".anovo-btn-retry").style.display = "inline-block";
     }
   }
 
@@ -223,8 +252,6 @@
 
     showOverlay(msg.text, msg.tool);
 
-    callApi(msg.tool, msg.text)
-      .then((result) => updateOverlay(result))
-      .catch((err) => showError(err.message));
+    processOverlay(msg.text, msg.tool);
   });
 })();

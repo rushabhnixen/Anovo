@@ -124,10 +124,17 @@ describe("API library", () => {
   });
 
   it("coWrite posts correct payload", async () => {
-    mockSuccess({ prompt: "start", suggestions: ["suggestion"] });
+    mockSuccess({ prompt: "start", suggestions: ["suggestion"], action: "continue", tone: "match", model_used: "standard" });
     await coWrite("start", 50, 3);
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
-    expect(body).toEqual({ text: "start", max_tokens: 50, num_suggestions: 3 });
+    expect(body).toEqual({
+      text: "start",
+      max_tokens: 50,
+      num_suggestions: 3,
+      action: "continue",
+      tone: "match",
+      model: "standard",
+    });
   });
 
   it("chatWithAI posts message, mode and history", async () => {

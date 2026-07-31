@@ -13,22 +13,24 @@ from config import settings
 def summarize(text: str, mode: str = "paragraph", max_length: int = 150) -> str:
     """Return a summary of *text* in paragraph or bullet mode."""
     try:
-        return _summarize_llm(text, mode)
+        return _summarize_llm(text, mode, max_length)
     except RuntimeError:
         return _summarize_bart(text, mode, max_length)
 
 
-def _summarize_llm(text: str, mode: str) -> str:
+def _summarize_llm(text: str, mode: str, max_length: int) -> str:
     from services.llm_client import llm_chat
 
     if mode == "bullet":
         instruction = (
             "Summarize the following text as a concise bullet-point list. "
-            "Use a bullet character (•) for each point. Return ONLY the bullet points."
+            f"Use a bullet character (•) for each point and target about {max_length} words total. "
+            "Prioritize claims, decisions, evidence, and action items. Return ONLY the bullet points."
         )
     else:
         instruction = (
-            "Summarize the following text in a clear, concise paragraph. "
+            f"Summarize the following text in a clear paragraph of about {max_length} words. "
+            "Preserve the central claim, essential evidence, names, numbers, and qualifications. "
             "Return ONLY the summary — no labels, no preamble."
         )
 
@@ -36,7 +38,7 @@ def _summarize_llm(text: str, mode: str) -> str:
         system_prompt="You are a professional summarization assistant.",
         user_prompt=f"{instruction}\n\nText:\n{text}",
         temperature=0.3,
-        max_tokens=512,
+        max_tokens=min(700, max_length + 100),
     )
 
 

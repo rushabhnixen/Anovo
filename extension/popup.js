@@ -11,6 +11,7 @@
     summarize: ["Summarize", "Summary"],
     translate: ["Translate", "Translation"],
     tone: ["Analyze tone", "Tone analysis"],
+    cowrite: ["Continue writing", "Writing options"],
   };
 
   const toolEl = document.getElementById("tool");
@@ -26,15 +27,21 @@
   const translateOptions = document.getElementById("translate-options");
   const sourceLanguage = document.getElementById("source-language");
   const targetLanguage = document.getElementById("target-language");
-  globalThis.populateAnovoLanguages(sourceLanguage, "en");
+  const cowriterOptions = document.getElementById("cowriter-options");
+  const cowriterAction = document.getElementById("cowriter-action");
+  const cowriterTone = document.getElementById("cowriter-tone");
+  globalThis.populateAnovoLanguages(sourceLanguage, "auto");
+  sourceLanguage.insertAdjacentHTML("afterbegin", '<option value="auto">Detect language</option>');
   globalThis.populateAnovoLanguages(targetLanguage, "fr");
 
   let currentResult = "";
 
-  chrome.storage.local.get(["workspaceTool", "sourceLanguage", "targetLanguage"], (items) => {
+  chrome.storage.local.get(["workspaceTool", "sourceLanguage", "targetLanguage", "cowriterAction", "cowriterTone"], (items) => {
     toolEl.value = items.workspaceTool || "paraphrase";
-    sourceLanguage.value = items.sourceLanguage || "en";
+    sourceLanguage.value = items.sourceLanguage || "auto";
     targetLanguage.value = items.targetLanguage || "fr";
+    cowriterAction.value = items.cowriterAction || "continue";
+    cowriterTone.value = items.cowriterTone || "match";
     updateTool();
   });
 
@@ -44,6 +51,8 @@
   });
   sourceLanguage.addEventListener("change", () => chrome.storage.local.set({ sourceLanguage: sourceLanguage.value }));
   targetLanguage.addEventListener("change", () => chrome.storage.local.set({ targetLanguage: targetLanguage.value }));
+  cowriterAction.addEventListener("change", () => chrome.storage.local.set({ cowriterAction: cowriterAction.value }));
+  cowriterTone.addEventListener("change", () => chrome.storage.local.set({ cowriterTone: cowriterTone.value }));
 
   inputEl.addEventListener("input", updateCount);
   inputEl.addEventListener("keydown", (event) => {
@@ -58,6 +67,7 @@
     processBtn.textContent = LABELS[toolEl.value][0];
     resultLabel.textContent = LABELS[toolEl.value][1];
     translateOptions.hidden = toolEl.value !== "translate";
+    cowriterOptions.hidden = toolEl.value !== "cowrite";
   }
 
   function updateCount() {
@@ -113,6 +123,7 @@
       summarize: { path: "/api/summarize", body: { text, mode: "paragraph", max_length: 150 } },
       translate: { path: "/api/translate", body: { text, source_language: sourceLanguage.value, target_language: targetLanguage.value } },
       tone: { path: "/api/tone-detect", body: { text } },
+      cowrite: { path: "/api/co-write", body: { text, max_tokens: 90, num_suggestions: 3, action: cowriterAction.value, tone: cowriterTone.value, model: "standard" } },
     }[tool];
   }
 
@@ -129,6 +140,9 @@
       return data.tones.slice(0, 6).map((tone) => (
         `${tone.label.charAt(0).toUpperCase()}${tone.label.slice(1)}  ${Math.round(tone.score * 100)}%`
       )).join("\n");
+    }
+    if (tool === "cowrite") {
+      return data.suggestions.map((suggestion, index) => `Option ${index + 1}\n${suggestion}`).join("\n\n");
     }
     const fields = { humanize: "humanized", paraphrase: "paraphrased", summarize: "summary", translate: "translated" };
     return data[fields[tool]] || JSON.stringify(data);

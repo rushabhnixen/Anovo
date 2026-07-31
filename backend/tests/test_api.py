@@ -277,11 +277,14 @@ class TestTone:
 class TestCoWriter:
     def test_cowrite_success(self):
         suggestions = [" is a rapidly growing field.", " continues to evolve rapidly.", " shapes the modern economy."]
-        with patch("routers.cowriter.generate_suggestions", return_value=suggestions):
+        with patch("routers.cowriter.generate_suggestions", return_value=(suggestions, "standard")):
             response = client.post("/api/co-write", json={"text": "Artificial intelligence", "max_tokens": 50, "num_suggestions": 3})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert len(data["suggestions"]) == 3
+        assert data["action"] == "continue"
+        assert data["tone"] == "match"
+        assert data["model_used"] == "standard"
         assert data["prompt"] == "Artificial intelligence"
 
     def test_cowrite_empty_text(self):
@@ -296,6 +299,28 @@ class TestCoWriter:
         with patch("routers.cowriter.generate_suggestions", side_effect=Exception("generation failed")):
             response = client.post("/api/co-write", json={"text": "The future of", "max_tokens": 50, "num_suggestions": 2})  # noqa: E501
         assert response.status_code == 500
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+
+class TestDocuments:
+    def test_extract_text_document_for_unified_workspace(self):
+        response = client.post(
+            "/api/documents/extract",
+            files={"file": ("draft.txt", b"First paragraph.\n\nSecond paragraph.", "text/plain")},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["filename"] == "draft.txt"
+        assert data["text"] == "First paragraph.\n\nSecond paragraph."
+        assert data["character_count"] == len(data["text"])
+
+    def test_extract_rejects_unsupported_document(self):
+        response = client.post(
+            "/api/documents/extract",
+            files={"file": ("draft.pdf", b"not a pdf", "application/pdf")},
+        )
+        assert response.status_code == 400
 
 
 # ── Chat ──────────────────────────────────────────────────────────────────────

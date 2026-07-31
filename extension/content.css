@@ -109,6 +109,7 @@
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .anovo-btn {
@@ -124,6 +125,19 @@
 .anovo-btn-copy {
   background: #f1f5f9;
   color: #334155;
+}
+
+.anovo-btn-retry,
+.anovo-btn-sidebar {
+  background: transparent;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.anovo-btn-retry:hover,
+.anovo-btn-sidebar:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
 }
 
 .anovo-btn-copy:hover {
@@ -167,5 +181,16 @@
 
   .anovo-btn-copy:hover {
     background: #475569;
+  }
+
+  .anovo-btn-retry,
+  .anovo-btn-sidebar {
+    color: #cbd5e1;
+    border-color: #475569;
+  }
+
+  .anovo-btn-retry:hover,
+  .anovo-btn-sidebar:hover {
+    background: #334155;
   }
 }

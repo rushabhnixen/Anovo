@@ -57,6 +57,7 @@
           <option value="summarize">≡ Summarize</option>
           <option value="translate">文 Translate</option>
           <option value="tone">◒ Tone</option>
+          <option value="cowrite">✎ Co-Writer</option>
         </select>
       </div>
 
@@ -103,6 +104,30 @@
         <label>
           To
           <select id="target-language" class="sb-select"></select>
+        </label>
+      </div>
+
+      <div id="cowriter-controls" class="sb-control-grid" hidden>
+        <label>
+          Action
+          <select id="cowriter-action" class="sb-select">
+            <option value="continue">Continue</option>
+            <option value="next_paragraph">Next paragraph</option>
+            <option value="expand">Expand idea</option>
+            <option value="transition">Transition</option>
+            <option value="outline">Outline</option>
+          </select>
+        </label>
+        <label>
+          Voice
+          <select id="cowriter-tone" class="sb-select">
+            <option value="match">Match my voice</option>
+            <option value="professional">Professional</option>
+            <option value="friendly">Friendly</option>
+            <option value="academic">Academic</option>
+            <option value="persuasive">Persuasive</option>
+            <option value="creative">Creative</option>
+          </select>
         </label>
       </div>
 

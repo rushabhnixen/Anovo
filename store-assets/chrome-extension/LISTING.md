@@ -13,6 +13,7 @@ Rewrite and edit selected text with Anovo's unified AI writing workspace.
 Anovo helps you improve writing without leaving the page you are working on.
 
 - Paraphrase and humanize selected text.
+- Continue a draft, develop its next paragraph, expand an idea, create a transition, or outline what comes next with CoWriter.
 - Correct grammar and spelling.
 - Summarize longer passages.
 - Translate writing across 75 languages.
@@ -57,13 +58,15 @@ Anovo improves user-selected or user-entered writing through AI-assisted rewriti
 1. Open the extension popup.
 2. Enter a paragraph, select Paraphrase, and run the action.
 3. Edit the generated result directly and copy it.
-4. Open the side panel and switch between Paraphrase, Humanize, Grammar, Summarize, Translate, and Tone.
+4. Open the side panel and switch between Paraphrase, Humanize, Grammar, Summarize, Translate, Tone, and CoWriter.
 5. On a normal HTTPS page, select editable text, right-click, choose Anovo, and run Paraphrase. Edit the result, then choose Replace.
 
 The free Anovo Fast model does not require an account. PRO model selection requires an Anovo premium account.
 
-## Version 1.4 release notes
+## Version 1.5 release notes
 
-- Added Groq Compound and Compound Mini writing choices.
-- Expanded translation to 75 languages in the popup and side panel.
-- Fixed tone analysis returning identical 50% scores after malformed provider responses.
+- Added a full CoWriter with Continue, Next paragraph, Expand idea, Transition, and Outline actions.
+- Added Match voice, Professional, Friendly, Academic, Persuasive, and Creative writing voices.
+- Context-menu actions now respect the same intensity, summary length, language, and model preferences as the popup and side panel.
+- Added one-click Regenerate and Open sidebar controls to in-page results.
+- Added automatic source-language detection and kept all 75 translation languages.

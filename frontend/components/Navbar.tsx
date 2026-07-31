@@ -12,7 +12,6 @@ const workflowLinks = [
   { label: "Co-Writer", href: "/cowriter" },
   { label: "AI Chat", href: "/chat" },
   { label: "Plagiarism Check", href: "/plagiarism" },
-  { label: "Document Upload", href: "/upload" },
   { label: "Developer API", href: "/api-docs" },
 ];
 

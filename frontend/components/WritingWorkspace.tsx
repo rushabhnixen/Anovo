@@ -6,6 +6,8 @@ import {
   ParaphraseMode,
   checkGrammar,
   detectTone,
+  downloadProcessedDoc,
+  extractDocument,
   humanizeText,
   paraphraseText,
   refineParaphrase,
@@ -151,11 +153,15 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
   const [redoStack, setRedoStack] = useState<Array<{ output: string; compareOutput: string }>>([]);
   const [isEditingOutput, setIsEditingOutput] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [grammarLanguage, setGrammarLanguage] = useState("en-US");
+  const [grammarLanguage, setGrammarLanguage] = useState("auto");
   const [summaryMode, setSummaryMode] = useState<"paragraph" | "bullet">("paragraph");
   const [summaryLength, setSummaryLength] = useState(150);
-  const [sourceLanguage, setSourceLanguage] = useState("en");
+  const [sourceLanguage, setSourceLanguage] = useState("auto");
   const [targetLanguage, setTargetLanguage] = useState("fr");
+  const [sourceFilename, setSourceFilename] = useState("");
+  const [documentLoading, setDocumentLoading] = useState(false);
+  const [documentDownloading, setDocumentDownloading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const requestId = useRef(0);
   const suggestionCache = useRef(new Map<string, string[]>());
   const { token, user } = useAuth();
@@ -165,7 +171,11 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
   const sentences = useMemo(() => getSentenceSegments(displayOutput), [displayOutput]);
   const supportsRefinement = tool === "paraphrase" || tool === "humanize";
   const supportsModels = tool === "paraphrase" || tool === "humanize";
-  const inputLimit = tool === "translate" ? 2000 : tool === "grammar" || tool === "summarize" || tool === "tone" ? 5000 : 10000;
+  const inputLimit = tool === "translate"
+    ? 2000
+    : tool === "grammar" || tool === "summarize" || tool === "tone"
+      ? 5000
+      : 50000;
   const originalWords = useMemo(() => {
     const words = inputText.match(/[\p{L}\p{N}]+(?:[’'][\p{L}\p{N}]+)*/gu) ?? [];
     return new Set(words.map(normaliseWord));
@@ -417,6 +427,59 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     }
   };
 
+  const loadDocument = async (file: File) => {
+    setDocumentLoading(true);
+    setError("");
+    try {
+      const document = await extractDocument(file);
+      setInputText(document.text);
+      setSourceFilename(document.filename);
+      setOutput("");
+      setCompareOutput("");
+      setResultMeta(`${wordCount(document.text)} words loaded from ${document.filename}`);
+      closeSuggestions();
+    } catch (caught) {
+      setError((caught as Error).message);
+    } finally {
+      setDocumentLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const downloadOutput = async () => {
+    if (!displayOutput) return;
+    setDocumentDownloading(true);
+    setError("");
+    try {
+      const filename = sourceFilename || "anovo-result.docx";
+      const blob = await downloadProcessedDoc(displayOutput, filename);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${filename.replace(/\.[^.]+$/, "")}_${tool}.docx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (caught) {
+      setError((caught as Error).message);
+    } finally {
+      setDocumentDownloading(false);
+    }
+  };
+
+  const useOutputAsInput = () => {
+    if (!displayOutput) return;
+    setInputText(displayOutput.slice(0, inputLimit));
+    setOutput("");
+    setCompareOutput("");
+    setActiveVariant("primary");
+    setResultMeta("Result moved to the editor for another writing pass");
+    setUndoStack([]);
+    setRedoStack([]);
+    closeSuggestions();
+  };
+
   const copyOutput = async () => {
     if (!displayOutput) return;
     try {
@@ -568,12 +631,31 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
 
         <div className="grid min-h-[570px] lg:grid-cols-2">
           <div className="flex min-h-[470px] flex-col border-b border-slate-200 lg:border-b-0 lg:border-r dark:border-slate-800">
-            <div className="flex h-12 items-center justify-between border-b border-slate-100 px-5 dark:border-slate-900">
-              <div>
+            <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-2 dark:border-slate-900">
+              <div className="min-w-0">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Your text</span>
                 <span className="ml-2 text-[11px] text-slate-400">{toolConfig.description}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".docx,.txt"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void loadDocument(file);
+                  }}
+                  aria-label="Upload document"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={documentLoading}
+                  className="rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-900"
+                >
+                  {documentLoading ? "Reading…" : "Upload document"}
+                </button>
                 <button
                   type="button"
                   onClick={pasteText}
@@ -588,6 +670,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                       setInputText("");
                       setOutput("");
                       setCompareOutput("");
+                      setSourceFilename("");
                       closeSuggestions();
                     }}
                     className="rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900"
@@ -597,6 +680,15 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                 ) : null}
               </div>
             </div>
+
+            {sourceFilename ? (
+              <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/70 px-5 py-2 text-xs text-emerald-800 dark:border-emerald-950 dark:bg-emerald-950/35 dark:text-emerald-300">
+                <span className="min-w-0 truncate">Document loaded · {sourceFilename}</span>
+                <button type="button" onClick={() => setSourceFilename("")} className="ml-3 shrink-0 font-semibold hover:underline">
+                  Detach
+                </button>
+              </div>
+            ) : null}
 
             <textarea
               value={inputText}
@@ -629,6 +721,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                     onChange={(event) => setGrammarLanguage(event.target.value)}
                     className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
                   >
+                    <option value="auto">Auto-detect</option>
                     <option value="en-US">English (US)</option>
                     <option value="en-GB">English (UK)</option>
                     <option value="de-DE">German</option>
@@ -681,13 +774,14 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                     onChange={(event) => setSourceLanguage(event.target.value)}
                     className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
                   >
+                      <option value="auto">Detect language</option>
                       {TRANSLATION_LANGUAGES.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
                   </select>
                   <button
                     type="button"
                     onClick={() => {
                       setSourceLanguage(targetLanguage);
-                      setTargetLanguage(sourceLanguage);
+                      setTargetLanguage(sourceLanguage === "auto" ? "en" : sourceLanguage);
                     }}
                     aria-label="Swap languages"
                     className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-sm text-slate-500 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-900"
@@ -723,7 +817,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
           </div>
 
           <div className="relative flex min-h-[570px] flex-col bg-slate-50/35 dark:bg-slate-950">
-            <div className="flex min-h-12 items-center justify-between gap-3 border-b border-slate-100 px-5 py-2 dark:border-slate-900">
+            <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-2 dark:border-slate-900">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-300">
                   {toolConfig.outputLabel}
@@ -763,7 +857,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                   </div>
                 ) : null}
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center justify-end gap-1">
                 {displayOutput || isEditingOutput ? (
                   <button
                     type="button"
@@ -783,6 +877,25 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                     }`}
                   >
                     {isEditingOutput ? "Done" : "Edit"}
+                  </button>
+                ) : null}
+                {displayOutput ? (
+                  <button
+                    type="button"
+                    onClick={useOutputAsInput}
+                    className="rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-900"
+                  >
+                    Use as input
+                  </button>
+                ) : null}
+                {displayOutput ? (
+                  <button
+                    type="button"
+                    onClick={downloadOutput}
+                    disabled={documentDownloading}
+                    className="rounded-md px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-400 dark:hover:bg-slate-900"
+                  >
+                    {documentDownloading ? "Preparing…" : "Download .docx"}
                   </button>
                 ) : null}
                 <button
@@ -867,7 +980,11 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
             </div>
 
             <div className="flex min-h-12 flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-white px-5 py-2.5 text-xs text-slate-400 dark:border-slate-900 dark:bg-slate-950">
-              <span>{displayOutput ? `${wordCount(displayOutput)} words` : "Ready"}</span>
+              <span>
+                {displayOutput
+                  ? `${wordCount(displayOutput)} words · ${wordCount(displayOutput) - wordCount(inputText) >= 0 ? "+" : ""}${wordCount(displayOutput) - wordCount(inputText)} vs source`
+                  : "Ready"}
+              </span>
               <span className="text-right">
                 {isEditingOutput
                   ? "Editing result · press Escape or Done when finished"

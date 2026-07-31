@@ -5,7 +5,7 @@ from typing import Literal, Optional
 # ── Paraphrase ──────────────────────────────────────────────────────────────
 
 class ParaphraseRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=10000, description="Text to paraphrase")
+    text: str = Field(..., min_length=1, max_length=50000, description="Text to paraphrase")
     intensity: int = Field(3, ge=1, le=5, description="Paraphrase intensity (1=minimal, 5=aggressive)")
     model: str = Field("standard", description="Model to use: 'standard' or a supported Anovo model profile")
     writing_mode: Literal[
@@ -23,7 +23,7 @@ class ParaphraseResponse(BaseModel):
 
 
 class ParaphraseRefineRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=10000, description="Full paraphrased text for context")
+    text: str = Field(..., min_length=1, max_length=50000, description="Full paraphrased text for context")
     selected_text: str = Field(..., min_length=1, max_length=2000, description="Selected sentence or word")
     kind: Literal["sentence", "word"]
     writing_mode: Literal[
@@ -94,7 +94,7 @@ class TranslateResponse(BaseModel):
 # ── Humanize ─────────────────────────────────────────────────────────────────
 
 class HumanizeRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=10000, description="Text to humanize")
+    text: str = Field(..., min_length=1, max_length=50000, description="Text to humanize")
     model: str = Field("standard", description="Model to use: 'standard' or a supported Anovo model profile")
 
 
@@ -140,14 +140,24 @@ class ToneResponse(BaseModel):
 # ── Co-Writer ────────────────────────────────────────────────────────────────
 
 class CoWriterRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000, description="Text prompt for autocomplete")
+    text: str = Field(..., min_length=1, max_length=10000, description="Draft text and context")
     max_tokens: int = Field(50, ge=10, le=200, description="Maximum tokens to generate")
     num_suggestions: int = Field(3, ge=1, le=5, description="Number of suggestions to return")
+    action: Literal[
+        "continue", "next_paragraph", "expand", "transition", "outline",
+    ] = Field("continue", description="What the co-writer should produce next")
+    tone: Literal[
+        "match", "professional", "friendly", "academic", "persuasive", "creative",
+    ] = Field("match", description="Voice for the suggestions")
+    model: str = Field("standard", description="Anovo writing model profile")
 
 
 class CoWriterResponse(BaseModel):
     prompt: str
     suggestions: list[str]
+    action: str = "continue"
+    tone: str = "match"
+    model_used: str = "standard"
 
 
 # ── AI Chat ──────────────────────────────────────────────────────────────────

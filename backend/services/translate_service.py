@@ -7,6 +7,7 @@ from __future__ import annotations
 
 # Map language codes to full names for better LLM prompts
 LANG_NAMES: dict[str, str] = {
+    "auto": "the automatically detected source language",
     "af": "Afrikaans", "am": "Amharic", "ar": "Arabic", "az": "Azerbaijani",
     "be": "Belarusian", "bg": "Bulgarian", "bn": "Bengali", "bs": "Bosnian",
     "ca": "Catalan", "cs": "Czech", "cy": "Welsh",

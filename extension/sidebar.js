@@ -11,6 +11,7 @@
     summarize: { action: "Summarize", result: "Summary" },
     translate: { action: "Translate", result: "Translation" },
     tone: { action: "Analyze tone", result: "Tone analysis" },
+    cowrite: { action: "Continue writing", result: "Writing options" },
   };
 
   const authLogin = document.getElementById("auth-login");
@@ -44,7 +45,10 @@
   const summaryLength = document.getElementById("summary-length");
   const sourceLanguage = document.getElementById("source-language");
   const targetLanguage = document.getElementById("target-language");
-  globalThis.populateAnovoLanguages(sourceLanguage, "en");
+  const cowriterAction = document.getElementById("cowriter-action");
+  const cowriterTone = document.getElementById("cowriter-tone");
+  globalThis.populateAnovoLanguages(sourceLanguage, "auto");
+  sourceLanguage.insertAdjacentHTML("afterbegin", '<option value="auto">Detect language</option>');
   globalThis.populateAnovoLanguages(targetLanguage, "fr");
 
   let currentMode = "standard";
@@ -62,6 +66,8 @@
     "summaryLength",
     "sourceLanguage",
     "targetLanguage",
+    "cowriterAction",
+    "cowriterTone",
   ], async (items) => {
     toolSelect.value = items.workspaceTool || "paraphrase";
     currentMode = items.workspaceMode || "standard";
@@ -74,8 +80,10 @@
     intensityValue.textContent = intensityInput.value;
     summaryMode.value = items.summaryMode || "paragraph";
     summaryLength.value = items.summaryLength || "150";
-    sourceLanguage.value = items.sourceLanguage || "en";
+    sourceLanguage.value = items.sourceLanguage || "auto";
     targetLanguage.value = items.targetLanguage || "fr";
+    cowriterAction.value = items.cowriterAction || "continue";
+    cowriterTone.value = items.cowriterTone || "match";
     updateToolUI();
     if (items.authToken) {
       authToken = items.authToken;
@@ -111,6 +119,8 @@
   summaryLength.addEventListener("change", () => chrome.storage.local.set({ summaryLength: summaryLength.value }));
   sourceLanguage.addEventListener("change", () => chrome.storage.local.set({ sourceLanguage: sourceLanguage.value }));
   targetLanguage.addEventListener("change", () => chrome.storage.local.set({ targetLanguage: targetLanguage.value }));
+  cowriterAction.addEventListener("change", () => chrome.storage.local.set({ cowriterAction: cowriterAction.value }));
+  cowriterTone.addEventListener("change", () => chrome.storage.local.set({ cowriterTone: cowriterTone.value }));
 
   input.addEventListener("input", updateCount);
   input.addEventListener("keydown", (event) => {
@@ -216,7 +226,8 @@
     document.getElementById("paraphrase-controls").hidden = tool !== "paraphrase";
     document.getElementById("summary-controls").hidden = tool !== "summarize";
     document.getElementById("translation-controls").hidden = tool !== "translate";
-    document.getElementById("model-section").hidden = tool !== "paraphrase" && tool !== "humanize";
+    document.getElementById("cowriter-controls").hidden = tool !== "cowrite";
+    document.getElementById("model-section").hidden = tool !== "paraphrase" && tool !== "humanize" && tool !== "cowrite";
     input.placeholder = `Paste or type text to ${labels.action.toLowerCase()}…`;
   }
 
@@ -287,6 +298,10 @@
       summarize: { path: "/api/summarize", body: { text, mode: summaryMode.value, max_length: Number(summaryLength.value) } },
       translate: { path: "/api/translate", body: { text, source_language: sourceLanguage.value, target_language: targetLanguage.value } },
       tone: { path: "/api/tone-detect", body: { text } },
+      cowrite: {
+        path: "/api/co-write",
+        body: { text, max_tokens: 90, num_suggestions: 3, action: cowriterAction.value, tone: cowriterTone.value, model },
+      },
     };
     return endpoints[tool];
   }
@@ -306,6 +321,9 @@
       return data.tones.slice(0, 6).map((tone) => (
         `${tone.label.charAt(0).toUpperCase()}${tone.label.slice(1)}  ${Math.round(tone.score * 100)}%`
       )).join("\n");
+    }
+    if (tool === "cowrite") {
+      return data.suggestions.map((suggestion, index) => `Option ${index + 1}\n${suggestion}`).join("\n\n");
     }
     const fields = { humanize: "humanized", paraphrase: "paraphrased", summarize: "summary", translate: "translated" };
     return data[fields[tool]] || JSON.stringify(data);

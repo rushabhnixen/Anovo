@@ -50,7 +50,7 @@
 <body>
   <header class="header">
     <div class="brand"><span class="logo">A</span><span><strong>Anovo</strong><small>Quick workspace</small></span></div>
-    <span class="version">v1.4</span>
+    <span class="version">v1.5</span>
   </header>
   <div class="wrap">
     <section class="card">
@@ -62,11 +62,33 @@
           <option value="summarize">≡ Summarize</option>
           <option value="translate">文 Translate</option>
           <option value="tone">◒ Tone</option>
+          <option value="cowrite">✎ Co-Writer</option>
         </select>
       </div>
       <div id="translate-options" class="translate-options" hidden>
         <label>From<select id="source-language"></select></label>
         <label>To<select id="target-language"></select></label>
+      </div>
+      <div id="cowriter-options" class="translate-options" hidden>
+        <label>Action
+          <select id="cowriter-action">
+            <option value="continue">Continue</option>
+            <option value="next_paragraph">Next paragraph</option>
+            <option value="expand">Expand idea</option>
+            <option value="transition">Transition</option>
+            <option value="outline">Outline</option>
+          </select>
+        </label>
+        <label>Voice
+          <select id="cowriter-tone">
+            <option value="match">Match my voice</option>
+            <option value="professional">Professional</option>
+            <option value="friendly">Friendly</option>
+            <option value="academic">Academic</option>
+            <option value="persuasive">Persuasive</option>
+            <option value="creative">Creative</option>
+          </select>
+        </label>
       </div>
       <textarea id="input" placeholder="Paste or type text here…"></textarea>
       <div class="actions">
