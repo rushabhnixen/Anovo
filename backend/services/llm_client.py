@@ -28,6 +28,8 @@ HF_URL = "https://router.huggingface.co/v1/chat/completions"
 PREMIUM_MODEL_PROFILES = {
     "gpt-oss-120b": "openai/gpt-oss-120b",
     "gpt-oss-20b": "openai/gpt-oss-20b",
+    "compound": "groq/compound",
+    "compound-mini": "groq/compound-mini",
     "qwen-3.6-27b": "qwen/qwen3.6-27b",
 }
 

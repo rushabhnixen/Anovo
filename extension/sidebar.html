@@ -98,23 +98,11 @@
       <div id="translation-controls" class="sb-control-grid" hidden>
         <label>
           From
-          <select id="source-language" class="sb-select">
-            <option value="en">English</option>
-            <option value="fr">French</option>
-            <option value="es">Spanish</option>
-            <option value="de">German</option>
-            <option value="hi">Hindi</option>
-          </select>
+          <select id="source-language" class="sb-select"></select>
         </label>
         <label>
           To
-          <select id="target-language" class="sb-select">
-            <option value="fr">French</option>
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="de">German</option>
-            <option value="hi">Hindi</option>
-          </select>
+          <select id="target-language" class="sb-select"></select>
         </label>
       </div>
 
@@ -139,6 +127,8 @@
           <option value="standard">Anovo Fast · Free</option>
           <option value="gpt-oss-120b">GPT-OSS 120B · PRO</option>
           <option value="gpt-oss-20b">GPT-OSS 20B · PRO</option>
+          <option value="compound">Groq Compound · PRO</option>
+          <option value="compound-mini">Compound Mini · PRO</option>
           <option value="qwen-3.6-27b">Qwen 3.6 27B · PRO Preview</option>
         </select>
       </div>
@@ -163,6 +153,7 @@
     <a href="https://anovo.vercel.app/privacy" target="_blank" rel="noreferrer">Privacy</a>
   </footer>
 
+  <script src="languages.js"></script>
   <script src="sidebar.js"></script>
 </body>
 </html>

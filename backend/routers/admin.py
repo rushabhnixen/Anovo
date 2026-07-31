@@ -23,6 +23,8 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 MODEL_LABELS = {
     "gpt-oss-120b": "GPT-OSS 120B",
     "gpt-oss-20b": "GPT-OSS 20B",
+    "compound": "Groq Compound",
+    "compound-mini": "Groq Compound Mini",
     "qwen-3.6-27b": "Qwen 3.6 27B",
 }
 

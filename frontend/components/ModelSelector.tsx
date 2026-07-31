@@ -7,6 +7,8 @@ export const WRITING_MODELS = [
   { value: "standard", label: "Anovo Fast", detail: "Fast everyday writing", badge: "Free" },
   { value: "gpt-oss-120b", label: "GPT-OSS 120B", detail: "Highest-quality open model", badge: "Pro" },
   { value: "gpt-oss-20b", label: "GPT-OSS 20B", detail: "Fast open reasoning", badge: "Pro" },
+  { value: "compound", label: "Groq Compound", detail: "Versatile agentic writing", badge: "Pro" },
+  { value: "compound-mini", label: "Compound Mini", detail: "Fast agentic writing", badge: "Pro" },
   { value: "qwen-3.6-27b", label: "Qwen 3.6 27B", detail: "Creative multilingual writing", badge: "Preview" },
 ] as const;
 
@@ -76,7 +78,7 @@ export default function ModelSelector({
           className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 text-[11px] font-bold text-white shadow-sm transition hover:from-amber-600 hover:to-orange-600"
         >
           <span aria-hidden="true">✦</span>
-          Unlock 3 PRO models
+          Unlock 5 PRO models
         </Link>
       ) : (
         <span className="rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:bg-amber-950 dark:text-amber-300">

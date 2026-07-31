@@ -13,6 +13,7 @@ import {
   translateText,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { TRANSLATION_LANGUAGES } from "@/lib/languages";
 import ModelSelector from "./ModelSelector";
 import SuggestionPopover from "./SuggestionPopover";
 import SynonymSlider from "./SynonymSlider";
@@ -53,20 +54,6 @@ const MODES: Array<{ id: ParaphraseMode; label: string; hint: string }> = [
   { id: "expand", label: "Expand", hint: "Add useful detail" },
   { id: "shorten", label: "Shorten", hint: "Make it concise" },
 ];
-
-const LANGUAGES = [
-  ["en", "English"],
-  ["fr", "French"],
-  ["es", "Spanish"],
-  ["de", "German"],
-  ["it", "Italian"],
-  ["pt", "Portuguese"],
-  ["hi", "Hindi"],
-  ["ja", "Japanese"],
-  ["ko", "Korean"],
-  ["zh", "Chinese"],
-  ["ar", "Arabic"],
-] as const;
 
 interface SentenceSegment {
   text: string;
@@ -317,7 +304,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     }
     if (tool === "translate") {
       const response = await translateText(inputText, sourceLanguage, targetLanguage);
-      const language = LANGUAGES.find(([code]) => code === targetLanguage)?.[1] ?? targetLanguage;
+      const language = TRANSLATION_LANGUAGES.find(({ code }) => code === targetLanguage)?.label ?? targetLanguage;
       return { text: response.translated, meta: `Translated to ${language}` };
     }
     const response = await detectTone(inputText);
@@ -694,7 +681,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                     onChange={(event) => setSourceLanguage(event.target.value)}
                     className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
                   >
-                    {LANGUAGES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                      {TRANSLATION_LANGUAGES.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
                   </select>
                   <button
                     type="button"
@@ -713,7 +700,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
                     onChange={(event) => setTargetLanguage(event.target.value)}
                     className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-900"
                   >
-                    {LANGUAGES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
+                      {TRANSLATION_LANGUAGES.map(({ code, label }) => <option key={code} value={code}>{label}</option>)}
                   </select>
                 </div>
               ) : null}

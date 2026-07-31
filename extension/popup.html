@@ -20,6 +20,9 @@
     .wrap { padding:12px; }
     .card { overflow:hidden; border:1px solid var(--line); border-radius:15px; background:var(--panel); box-shadow:0 12px 32px rgb(15 23 42/.08); }
     .toolbar { display:flex; gap:8px; padding:10px; border-bottom:1px solid var(--line); }
+    .translate-options { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px; border-bottom:1px solid var(--line); }
+    .translate-options[hidden] { display:none; }
+    .translate-options label { display:flex; flex-direction:column; gap:3px; color:var(--muted); font-size:10px; font-weight:700; }
     select,input { height:35px; border:1px solid var(--line); border-radius:9px; background:var(--panel); color:var(--text); padding:6px 9px; }
     select { flex:1; font-weight:700; }
     textarea { display:block; width:100%; min-height:130px; resize:vertical; border:0; background:transparent; color:var(--text); padding:12px; line-height:1.65; outline:0; }
@@ -47,7 +50,7 @@
 <body>
   <header class="header">
     <div class="brand"><span class="logo">A</span><span><strong>Anovo</strong><small>Quick workspace</small></span></div>
-    <span class="version">v1.3</span>
+    <span class="version">v1.4</span>
   </header>
   <div class="wrap">
     <section class="card">
@@ -60,6 +63,10 @@
           <option value="translate">文 Translate</option>
           <option value="tone">◒ Tone</option>
         </select>
+      </div>
+      <div id="translate-options" class="translate-options" hidden>
+        <label>From<select id="source-language"></select></label>
+        <label>To<select id="target-language"></select></label>
       </div>
       <textarea id="input" placeholder="Paste or type text here…"></textarea>
       <div class="actions">
@@ -80,6 +87,7 @@
       <a href="https://anovo.vercel.app" target="_blank" rel="noreferrer">anovo.vercel.app ↗</a>
     </div>
   </div>
+  <script src="languages.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

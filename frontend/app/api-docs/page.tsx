@@ -26,7 +26,7 @@ const endpoints = [
   {
     method: "POST",
     path: "/api/translate",
-    description: "Translate text between 100+ languages",
+    description: "Translate text between 75 languages",
     body: { text: "Hello, world!", source_language: "en", target_language: "fr" },
   },
   {

@@ -44,6 +44,8 @@
   const summaryLength = document.getElementById("summary-length");
   const sourceLanguage = document.getElementById("source-language");
   const targetLanguage = document.getElementById("target-language");
+  globalThis.populateAnovoLanguages(sourceLanguage, "en");
+  globalThis.populateAnovoLanguages(targetLanguage, "fr");
 
   let currentMode = "standard";
   let authToken = null;
@@ -198,7 +200,7 @@
 
   function updateModelAccess() {
     const premium = Boolean(userData?.is_premium);
-    modelLock.textContent = premium ? "3 models unlocked" : "Sign in for PRO";
+    modelLock.textContent = premium ? "5 models unlocked" : "Sign in for PRO";
     Array.from(modelSelect.options).forEach((option) => {
       option.disabled = option.value !== "standard" && !premium;
     });

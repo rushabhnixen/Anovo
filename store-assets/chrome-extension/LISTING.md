@@ -15,8 +15,8 @@ Anovo helps you improve writing without leaving the page you are working on.
 - Paraphrase and humanize selected text.
 - Correct grammar and spelling.
 - Summarize longer passages.
-- Translate writing.
-- Review tone.
+- Translate writing across 75 languages.
+- Review tone with ranked, non-generic confidence scores.
 - Edit every generated result before copying or replacing text.
 - Use the compact popup, full Chrome side panel, or selection context menu.
 - Keep your source text when switching between writing tools.
@@ -61,3 +61,9 @@ Anovo improves user-selected or user-entered writing through AI-assisted rewriti
 5. On a normal HTTPS page, select editable text, right-click, choose Anovo, and run Paraphrase. Edit the result, then choose Replace.
 
 The free Anovo Fast model does not require an account. PRO model selection requires an Anovo premium account.
+
+## Version 1.4 release notes
+
+- Added Groq Compound and Compound Mini writing choices.
+- Expanded translation to 75 languages in the popup and side panel.
+- Fixed tone analysis returning identical 50% scores after malformed provider responses.

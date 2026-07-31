@@ -9,7 +9,8 @@ router = APIRouter(prefix="/api", tags=["tone"])
 @router.post("/tone-detect", response_model=ToneResponse, summary="Detect text tone")
 def tone_detect_endpoint(request: ToneRequest) -> ToneResponse:
     """
-    Classify the tone of the given text using zero-shot classification.
+    Classify the tone of the given text using the live LLM cascade and a fast
+    deterministic fallback for unavailable or malformed provider responses.
 
     - **text**: The input text to analyze (1–5000 characters).
 

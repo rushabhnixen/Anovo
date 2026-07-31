@@ -10,6 +10,8 @@ from services.llm_client import resolve_premium_model
     [
         ("gpt-oss-120b", "openai/gpt-oss-120b"),
         ("gpt-oss-20b", "openai/gpt-oss-20b"),
+        ("compound", "groq/compound"),
+        ("compound-mini", "groq/compound-mini"),
         ("qwen-3.6-27b", "qwen/qwen3.6-27b"),
         ("gpt-4o", "openai/gpt-oss-120b"),
         ("gpt-4o-mini", "openai/gpt-oss-20b"),

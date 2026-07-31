@@ -9,7 +9,8 @@ router = APIRouter(prefix="/api", tags=["translate"])
 @router.post("/translate", response_model=TranslateResponse, summary="Translate text")
 def translate_endpoint(request: TranslateRequest) -> TranslateResponse:
     """
-    Translate text between languages using Helsinki-NLP OpusMT models.
+    Translate text between 75 supported languages using the live LLM cascade,
+    with an OpusMT fallback when a compatible local model is available.
 
     - **text**: The input text to translate (1–2000 characters).
     - **source_language**: Source language code (e.g. `en`).

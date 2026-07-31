@@ -23,11 +23,18 @@
   const copyBtn = document.getElementById("copy-btn");
   const openBtn = document.getElementById("open-btn");
   const sidebarToggle = document.getElementById("sidebar-toggle");
+  const translateOptions = document.getElementById("translate-options");
+  const sourceLanguage = document.getElementById("source-language");
+  const targetLanguage = document.getElementById("target-language");
+  globalThis.populateAnovoLanguages(sourceLanguage, "en");
+  globalThis.populateAnovoLanguages(targetLanguage, "fr");
 
   let currentResult = "";
 
-  chrome.storage.local.get(["workspaceTool"], (items) => {
+  chrome.storage.local.get(["workspaceTool", "sourceLanguage", "targetLanguage"], (items) => {
     toolEl.value = items.workspaceTool || "paraphrase";
+    sourceLanguage.value = items.sourceLanguage || "en";
+    targetLanguage.value = items.targetLanguage || "fr";
     updateTool();
   });
 
@@ -35,6 +42,8 @@
     chrome.storage.local.set({ workspaceTool: toolEl.value });
     updateTool();
   });
+  sourceLanguage.addEventListener("change", () => chrome.storage.local.set({ sourceLanguage: sourceLanguage.value }));
+  targetLanguage.addEventListener("change", () => chrome.storage.local.set({ targetLanguage: targetLanguage.value }));
 
   inputEl.addEventListener("input", updateCount);
   inputEl.addEventListener("keydown", (event) => {
@@ -48,6 +57,7 @@
   function updateTool() {
     processBtn.textContent = LABELS[toolEl.value][0];
     resultLabel.textContent = LABELS[toolEl.value][1];
+    translateOptions.hidden = toolEl.value !== "translate";
   }
 
   function updateCount() {
@@ -101,7 +111,7 @@
       paraphrase: { path: "/api/paraphrase", body: { text, intensity: 3, writing_mode: "standard" } },
       grammar: { path: "/api/grammar-check", body: { text, language: "en-US" } },
       summarize: { path: "/api/summarize", body: { text, mode: "paragraph", max_length: 150 } },
-      translate: { path: "/api/translate", body: { text, source_language: "en", target_language: "fr" } },
+      translate: { path: "/api/translate", body: { text, source_language: sourceLanguage.value, target_language: targetLanguage.value } },
       tone: { path: "/api/tone-detect", body: { text } },
     }[tool];
   }

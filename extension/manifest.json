@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Anovo — AI Writing Tool",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Rewrite and edit selected text with Anovo's unified AI writing workspace.",
   "permissions": ["activeTab", "contextMenus", "storage", "sidePanel", "scripting"],
   "host_permissions": ["https://rushabh13-anovo-api.hf.space/*"],
