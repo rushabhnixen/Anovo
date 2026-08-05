@@ -314,11 +314,25 @@ Frontend runs at `http://localhost:3000`.
 
 ### Frontend → Vercel
 
-1. Connect repo to Vercel (https://vercel.com)
-2. Framework preset: **Next.js**
-3. Root directory: `frontend`
-4. Environment variable: `NEXT_PUBLIC_API_URL` = `https://rushabh13-anovo-api.hf.space`
-5. Auto-deploys on push to `main`
+Project: `anovo-frontend` under scope `rushabhs-projects-adfead00`.
+
+1. Framework preset: **Next.js**
+2. Root directory: `frontend`
+3. Environment variable: `NEXT_PUBLIC_API_URL` = `https://rushabh13-anovo-api.hf.space`
+   (set for Production and Development)
+
+**Manual deploy** (works today):
+```bash
+cd frontend
+vercel --prod --yes
+```
+
+**Auto-deploy on push to `main` is NOT currently wired.** `vercel git connect`
+fails because the Vercel GitHub App is not authorised for `rushabhnixen/Anovo`
+under this scope. To enable it: Vercel dashboard → project `anovo-frontend` →
+Settings → Git → connect `rushabhnixen/Anovo`, then set **Root Directory** to
+`frontend` (the CLI project currently uses `.`, which is correct only for
+CLI deploys made from inside `frontend/`).
 
 ### Backend → HuggingFace Spaces
 
