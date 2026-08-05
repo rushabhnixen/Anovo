@@ -334,6 +334,10 @@ cd /tmp/anovo-hf-deploy
 cp /workspaces/Anovo/backend/main.py .
 cp /workspaces/Anovo/backend/config.py .
 cp /workspaces/Anovo/backend/database.py .
+# ALWAYS copy requirements.txt. Missing a newly added dependency (e.g.
+# email-validator, which pydantic EmailStr needs) makes the Space build fine
+# but crash at import time on the affected route.
+cp /workspaces/Anovo/backend/requirements.txt .
 cp /workspaces/Anovo/backend/models/*.py models/
 cp /workspaces/Anovo/backend/services/*.py services/
 cp /workspaces/Anovo/backend/routers/*.py routers/
