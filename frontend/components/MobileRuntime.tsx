@@ -38,6 +38,23 @@ function ShareIcon() {
   );
 }
 
+/**
+ * Match the Android status bar to the active theme.
+ *
+ * The previous code pinned the background to white and the style to
+ * `Style.Dark`. In Capacitor `Style.Dark` means "light content for a dark
+ * background", so this painted white icons onto a white bar — invisible on any
+ * device that honours both settings, in either theme.
+ */
+async function applyStatusBarTheme() {
+  const isDark = document.documentElement.classList.contains("dark");
+  await Promise.allSettled([
+    // slate-950, matching the dark <body> background.
+    StatusBar.setBackgroundColor({ color: isDark ? "#020617" : "#ffffff" }),
+    StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }),
+  ]);
+}
+
 export default function MobileRuntime() {
   const router = useRouter();
   const pathname = usePathname();
@@ -81,8 +98,7 @@ export default function MobileRuntime() {
 
       await Promise.allSettled([
         StatusBar.setOverlaysWebView({ overlay: false }),
-        StatusBar.setBackgroundColor({ color: "#ffffff" }),
-        StatusBar.setStyle({ style: Style.Dark }),
+        applyStatusBarTheme(),
         SplashScreen.hide(),
       ]);
     };
@@ -91,8 +107,19 @@ export default function MobileRuntime() {
       void SplashScreen.hide();
     });
 
+    // ThemeToggle flips a class on <html>, so watch that rather than coupling
+    // the two components. Without this the bar keeps the theme it booted with.
+    const themeObserver = new MutationObserver(() => {
+      if (active) void applyStatusBarTheme();
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
     return () => {
       active = false;
+      themeObserver.disconnect();
       document.body.classList.remove("native-app");
       for (const handle of listenerHandles) void handle.remove();
     };

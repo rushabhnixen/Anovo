@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from models.schemas import TranslateRequest, TranslateResponse
+from services.translate_service import LANG_NAMES
 from services.translate_service import translate as _translate
 
 router = APIRouter(prefix="/api", tags=["translate"])
@@ -17,7 +18,7 @@ def translate_endpoint(request: TranslateRequest) -> TranslateResponse:
     - **target_language**: Target language code (e.g. `fr`, `de`, `es`).
     """
     try:
-        result = _translate(request.text, request.source_language, request.target_language)
+        result, detected = _translate(request.text, request.source_language, request.target_language)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -28,4 +29,6 @@ def translate_endpoint(request: TranslateRequest) -> TranslateResponse:
         translated=result,
         source_language=request.source_language,
         target_language=request.target_language,
+        detected_language=detected,
+        detected_language_name=LANG_NAMES.get(detected) if detected else None,
     )

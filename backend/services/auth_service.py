@@ -1,5 +1,7 @@
-"""Authentication service: password hashing and JWT token management."""
+"""Authentication service: password hashing, JWT tokens, and password resets."""
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
@@ -65,3 +67,49 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
     if user and verify_password(password, user.hashed_password):
         return user
     return None
+
+
+# ── Password reset ───────────────────────────────────────────────────────────
+
+def _hash_reset_token(token: str) -> str:
+    """Reset tokens are stored hashed so a database leak cannot be replayed."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def create_reset_token(db: Session, user: User) -> str:
+    """Issue a single-use reset token and return the plaintext value.
+
+    Only the hash is persisted. Issuing a new token invalidates any previous
+    one, since the stored hash is overwritten.
+    """
+    token = secrets.token_urlsafe(32)
+    user.reset_token_hash = _hash_reset_token(token)
+    user.reset_token_expires = datetime.utcnow() + timedelta(
+        minutes=settings.reset_token_expire_minutes
+    )
+    db.commit()
+    return token
+
+
+def consume_reset_token(db: Session, token: str, new_password: str) -> User | None:
+    """Validate a reset token, set the new password, and burn the token.
+
+    Returns None when the token is unknown or expired.
+    """
+    token_hash = _hash_reset_token(token)
+    user = db.query(User).filter(User.reset_token_hash == token_hash).first()
+    if not user or not user.reset_token_expires:
+        return None
+    if user.reset_token_expires < datetime.utcnow():
+        # Clear the stale token so it cannot be probed further.
+        user.reset_token_hash = None
+        user.reset_token_expires = None
+        db.commit()
+        return None
+
+    user.hashed_password = hash_password(new_password)
+    user.reset_token_hash = None
+    user.reset_token_expires = None
+    db.commit()
+    db.refresh(user)
+    return user

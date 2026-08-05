@@ -1,6 +1,9 @@
 """
-Authentication endpoints: register, login, current user, and promo code redemption.
+Authentication endpoints: register, login, current user, password reset, and
+promo code redemption.
 """
+
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -9,24 +12,38 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from models.schemas import (
+    ForgotPasswordRequest,
     LoginRequest,
+    MessageResponse,
     PromoCodeRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UserResponse,
 )
 from services.auth_service import (
     authenticate_user,
+    consume_reset_token,
     create_access_token,
+    create_reset_token,
     create_user,
     decode_token,
     get_user_by_email,
     get_user_by_id,
     get_user_by_username,
 )
+from services.mailer import send_password_reset
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
+
+# Deliberately identical whether or not the address is registered, so the
+# endpoint cannot be used to enumerate accounts.
+_RESET_SENT_MESSAGE = (
+    "If an account exists for that email, a password reset link has been sent."
+)
 
 
 def _current_user_id(
@@ -73,8 +90,11 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)) -> TokenRe
         return TokenResponse(access_token=token)
     except HTTPException:
         raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}")
+    except Exception:
+        # Never return the exception text: it leaks SQL, schema and stack detail
+        # to unauthenticated callers. Log it server-side instead.
+        logger.exception("Registration failed")
+        raise HTTPException(status_code=500, detail="Could not create the account. Please try again.")
 
 
 @router.post("/login", response_model=TokenResponse, summary="Log in")
@@ -90,8 +110,59 @@ def login(request: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
         return TokenResponse(access_token=token)
     except HTTPException:
         raise
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"{type(exc).__name__}: {exc}")
+    except Exception:
+        logger.exception("Login failed")
+        raise HTTPException(status_code=500, detail="Could not sign you in. Please try again.")
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    summary="Request a password reset link",
+)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    """Email a single-use reset link.
+
+    Always returns the same message so the endpoint cannot be used to discover
+    which email addresses have accounts.
+    """
+    user = get_user_by_email(db, request.email)
+    if user:
+        try:
+            token = create_reset_token(db, user)
+            reset_url = f"{settings.frontend_url.rstrip('/')}/reset-password?token={token}"
+            send_password_reset(
+                to=request.email,
+                reset_url=reset_url,
+                expire_minutes=settings.reset_token_expire_minutes,
+            )
+        except Exception:
+            # A mail outage must not change the response, or it becomes an
+            # oracle for which addresses are registered.
+            logger.exception("Could not send password reset email")
+
+    return MessageResponse(message=_RESET_SENT_MESSAGE)
+
+
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    summary="Set a new password using a reset token",
+)
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+) -> MessageResponse:
+    user = consume_reset_token(db, request.token, request.password)
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="This reset link is invalid or has expired. Please request a new one.",
+        )
+    return MessageResponse(message="Your password has been reset. You can now sign in.")
 
 
 @router.get("/me", response_model=UserResponse, summary="Get current user")

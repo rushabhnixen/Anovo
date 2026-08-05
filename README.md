@@ -81,6 +81,23 @@ OLLAMA_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
 ```
 
+#### Password reset (optional)
+
+Password reset works out of the box in development: if SMTP is not configured,
+the reset link is written to the backend log instead of being emailed. To send
+real email, add:
+
+```env
+FRONTEND_URL=http://localhost:3000   # used to build the link in the email
+RESET_TOKEN_EXPIRE_MINUTES=30
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=apikey
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=no-reply@yourdomain.com
+SMTP_USE_TLS=true
+```
+
 Start the backend:
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -147,6 +164,8 @@ Once the backend is running, visit:
 | POST | `/api/tone-detect` | Detect text tone (formal, casual, etc.) |
 | POST | `/api/co-write` | Generate AI autocomplete suggestions |
 | POST | `/api/chat` | AI chat with multiple modes |
+| POST | `/api/auth/forgot-password` | Email a single-use password reset link |
+| POST | `/api/auth/reset-password` | Set a new password using a reset token |
 
 ---
 

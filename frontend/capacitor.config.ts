@@ -30,7 +30,11 @@ const config: CapacitorConfig = {
       androidScaleType: "CENTER_CROP",
     },
     StatusBar: {
-      style: "DARK",
+      // Capacitor's "DARK" means light content, which painted white icons onto
+      // this white bar — invisible until MobileRuntime corrected it, and
+      // permanently invisible if that init failed. "LIGHT" gives dark icons for
+      // the light default; MobileRuntime switches both values in dark mode.
+      style: "LIGHT",
       backgroundColor: "#ffffff",
       overlaysWebView: false,
     },

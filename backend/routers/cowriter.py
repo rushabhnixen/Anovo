@@ -5,7 +5,8 @@ from database import get_db
 from models.schemas import CoWriterRequest, CoWriterResponse
 from routers.auth import _optional_user_id
 from services.auth_service import get_user_by_id
-from services.cowriter_service import generate_suggestions
+from services.content_advisory import advise
+from services.cowriter_service import generate_suggestions, voice_sample_advisory
 
 router = APIRouter(prefix="/api", tags=["co-writer"])
 
@@ -31,13 +32,14 @@ def cowriter_endpoint(
             raise HTTPException(status_code=403, detail="Premium subscription required")
 
     try:
-        suggestions, model_used = generate_suggestions(
+        suggestions, model_used, truncation_advisory = generate_suggestions(
             request.text,
             request.max_tokens,
             request.num_suggestions,
             request.action,
             request.tone,
             request.model,
+            request.instructions,
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -48,4 +50,11 @@ def cowriter_endpoint(
         action=request.action,
         tone=request.tone,
         model_used=model_used,
+        # Most specific first. No min_words on advise(): expanding a short seed
+        # like "Artificial intelligence" is exactly what the co-writer is for.
+        advisory=(
+            truncation_advisory
+            or advise(request.text)
+            or voice_sample_advisory(request.text, request.tone)
+        ),
     )

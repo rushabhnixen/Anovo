@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
 from models.schemas import GrammarRequest, GrammarResponse
-from services.grammar_service import check_grammar
+from services.content_advisory import advise
+from services.grammar_service import check_grammar, is_language_supported, resolve_language
 
 router = APIRouter(prefix="/api", tags=["grammar"])
 
@@ -25,4 +26,10 @@ def grammar_check_endpoint(request: GrammarRequest) -> GrammarResponse:
         original=request.text,
         errors=errors,
         error_count=len(errors),
+        # Warns when the input is code or JSON, where applying a "correction"
+        # would corrupt the user's file.
+        advisory=advise(request.text),
+        # Report the language actually checked, since "auto" is resolved here.
+        language_supported=is_language_supported(resolve_language(request.text, request.language)),
+        checked_language=resolve_language(request.text, request.language),
     )

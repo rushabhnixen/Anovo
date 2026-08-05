@@ -18,6 +18,12 @@ class User(Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Password reset. Only the SHA-256 hash of the token is stored, so a database
+    # leak cannot be replayed to take over accounts. Both columns are cleared
+    # once a token is used, making each token single-use.
+    reset_token_hash = Column(String(64), nullable=True, index=True)
+    reset_token_expires = Column(DateTime, nullable=True)
+
     history = relationship("HistoryEntry", back_populates="user", cascade="all, delete-orphan")
 
 
