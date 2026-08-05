@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import ModelSelector from "@/components/ModelSelector";
 import TextEditor from "@/components/TextEditor";
+import AdvisoryBanner from "@/components/AdvisoryBanner";
+import CopyButton from "@/components/CopyButton";
 import { coWrite } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -46,6 +48,8 @@ export default function CoWriterPage() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [advisory, setAdvisory] = useState<string | null>(null);
+  const [instructions, setInstructions] = useState("");
   const [draftReady, setDraftReady] = useState(false);
   const { token, user } = useAuth();
 
@@ -67,6 +71,7 @@ export default function CoWriterPage() {
     if (!inputText.trim() || loading) return;
     setLoading(true);
     setError("");
+    setAdvisory(null);
     try {
       const selectedModel = user?.is_premium ? model : "standard";
       const response = await coWrite(
@@ -77,9 +82,11 @@ export default function CoWriterPage() {
         tone,
         selectedModel,
         token ?? undefined,
+        instructions,
       );
       setSuggestions(response.suggestions);
       setModelUsed(response.model_used);
+      setAdvisory(response.advisory ?? null);
     } catch (caught) {
       setError((caught as Error).message);
     } finally {
@@ -93,16 +100,10 @@ export default function CoWriterPage() {
     setSuggestions([]);
   };
 
+  // Ctrl+Enter is handled inside TextEditor: ProseMirror inserts the newline in
+  // its own keydown handler, before an ancestor listener could prevent it.
   return (
-    <div
-      className="mx-auto w-full max-w-[1280px] pb-8"
-      onKeyDown={(event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-          event.preventDefault();
-          void handleGenerate();
-        }
-      }}
-    >
+    <div className="mx-auto w-full max-w-[1280px] pb-8">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-1 flex items-center gap-2">
@@ -172,7 +173,33 @@ export default function CoWriterPage() {
             </div>
 
             <div className="flex-1">
-              <TextEditor value={inputText} onChange={setInputText} placeholder="Start writing, paste a draft, or describe the idea you want to develop…" />
+              <TextEditor
+                value={inputText}
+                onChange={setInputText}
+                onSubmit={() => void handleGenerate()}
+                placeholder="Start writing, paste a draft, or describe the idea you want to develop…"
+              />
+
+              {/* Kept separate from the draft on purpose: text typed here is
+                  treated as your instructions, while the draft itself is only
+                  ever read as content. */}
+              <div className="mt-3">
+                <label
+                  htmlFor="cowriter-instructions"
+                  className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-400"
+                >
+                  Instructions <span className="font-normal text-slate-400">(optional)</span>
+                </label>
+                <input
+                  id="cowriter-instructions"
+                  type="text"
+                  value={instructions}
+                  maxLength={500}
+                  onChange={(event) => setInstructions(event.target.value)}
+                  placeholder="e.g. Do not mention battery, camera, or display"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:ring-emerald-950"
+                />
+              </div>
             </div>
 
             <div className="mt-4 grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-900/45 sm:grid-cols-3">
@@ -237,6 +264,11 @@ export default function CoWriterPage() {
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button type="button" onClick={() => insertSuggestion(suggestion)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700">Insert into draft</button>
                       <button type="button" onClick={() => { setInputText(suggestion); setSuggestions([]); }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Use as new draft</button>
+                      <CopyButton
+                        text={suggestion}
+                        label={`Copy option ${index + 1}`}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                      />
                     </div>
                   </article>
                 ))
@@ -257,6 +289,10 @@ export default function CoWriterPage() {
       </section>
 
       {error ? <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{error}</div> : null}
+
+      <div className="mt-4">
+        <AdvisoryBanner message={advisory} />
+      </div>
     </div>
   );
 }

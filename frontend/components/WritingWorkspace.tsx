@@ -15,6 +15,7 @@ import {
   translateText,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import AdvisoryBanner from "./AdvisoryBanner";
 import { TRANSLATION_LANGUAGES } from "@/lib/languages";
 import LanguageSelector from "./LanguageSelector";
 import ModelSelector from "./ModelSelector";
@@ -72,6 +73,8 @@ interface ProcessResult {
   text: string;
   modelUsed?: string;
   meta?: string;
+  /** Caution from the backend when input does not look like prose. */
+  advisory?: string | null;
 }
 
 interface WritingWorkspaceProps {
@@ -143,6 +146,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [modelUsed, setModelUsed] = useState("");
   const [resultMeta, setResultMeta] = useState("");
+  const [advisory, setAdvisory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeSelection, setActiveSelection] = useState<ActiveSelection | null>(null);
@@ -197,6 +201,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setCompareOutput("");
     setActiveVariant("primary");
     setResultMeta("");
+    setAdvisory(null);
     setError("");
     setUndoStack([]);
     setRedoStack([]);
@@ -291,7 +296,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
         token ?? undefined,
         writingMode,
       );
-      return { text: response.paraphrased, modelUsed: response.model_used };
+      return { text: response.paraphrased, modelUsed: response.model_used, advisory: response.advisory };
     }
     if (tool === "humanize") {
       const response = await humanizeText(inputText, selectedModel, token ?? undefined);
@@ -307,16 +312,23 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
         meta: response.error_count
           ? `${response.error_count} issue${response.error_count === 1 ? "" : "s"} corrected using the top suggestion`
           : "No grammar issues found",
+        advisory: response.advisory,
       };
     }
     if (tool === "summarize") {
       const response = await summarizeText(inputText, summaryMode, summaryLength);
-      return { text: response.summary, meta: `${summaryMode === "bullet" ? "Bullet" : "Paragraph"} summary` };
+      return { text: response.summary, meta: `${summaryMode === "bullet" ? "Bullet" : "Paragraph"} summary`, advisory: response.advisory };
     }
     if (tool === "translate") {
       const response = await translateText(inputText, sourceLanguage, targetLanguage);
       const language = TRANSLATION_LANGUAGES.find(({ code }) => code === targetLanguage)?.label ?? targetLanguage;
-      return { text: response.translated, meta: `Translated to ${language}` };
+      // Auto-detect previously gave no sign of what it had decided the input was.
+      const detected = response.detected_language_name
+        ?? TRANSLATION_LANGUAGES.find(({ code }) => code === response.detected_language)?.label;
+      const meta = sourceLanguage === "auto" && detected
+        ? `Detected ${detected} · translated to ${language}`
+        : `Translated to ${language}`;
+      return { text: response.translated, meta };
     }
     const response = await detectTone(inputText);
     return {
@@ -325,6 +337,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
         .map((tone) => `${tone.label[0].toUpperCase()}${tone.label.slice(1)}  ${Math.round(tone.score * 100)}%`)
         .join("\n"),
       meta: `Primary tone: ${response.primary_tone}`,
+      advisory: response.advisory,
     };
   };
 
@@ -334,6 +347,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
     setError("");
     setResultMeta("");
     setModelUsed("");
+    setAdvisory(null);
     setActiveVariant("primary");
     setUndoStack([]);
     setRedoStack([]);
@@ -355,6 +369,7 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
       setCompareOutput(baseline?.text ?? "");
       setModelUsed(primary.modelUsed ?? "standard");
       setResultMeta(primary.meta ?? "");
+      setAdvisory(primary.advisory ?? null);
     } catch (caught) {
       setError((caught as Error).message);
     } finally {
@@ -1027,6 +1042,11 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
           {error}
         </div>
       ) : null}
+
+      {/* The result above is still shown; this explains why it may not be reliable. */}
+      <div className="mt-4">
+        <AdvisoryBanner message={advisory} />
+      </div>
 
       {modelUsed === "standard" && model !== "standard" && output ? (
         <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">

@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { registerUser } from "@/lib/api";
+import {
+  PASSWORD_RULE,
+  USERNAME_RULE,
+  validateEmail,
+  validatePassword,
+  validateUsername,
+} from "@/lib/validation";
 
 export default function RegisterPage() {
   const { login } = useAuth();
@@ -12,15 +19,31 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    username?: string;
+    email?: string;
+    password?: string;
+  }>({});
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Same rules the server enforces, checked here so the user sees them before
+    // a round trip.
+    const nextErrors = {
+      username: validateUsername(username) ?? undefined,
+      email: validateEmail(email) ?? undefined,
+      password: validatePassword(password) ?? undefined,
+    };
+    setFieldErrors(nextErrors);
+    if (nextErrors.username || nextErrors.email || nextErrors.password) return;
+
     setLoading(true);
     try {
-      const { access_token } = await registerUser(username, email, password);
+      const { access_token } = await registerUser(username.trim(), email.trim(), password);
       login(access_token);
       router.push("/");
     } catch (err: unknown) {
@@ -30,6 +53,13 @@ export default function RegisterPage() {
     }
   }
 
+  const fieldClass = (invalid?: string) =>
+    `rounded-lg border px-3 py-2 text-sm bg-white dark:bg-gray-950 focus:outline-none focus:ring-2 ${
+      invalid
+        ? "border-red-500 focus:ring-red-500"
+        : "border-gray-300 dark:border-gray-700 focus:ring-brand-500"
+    }`;
+
   return (
     <div className="max-w-md mx-auto">
       <h1 className="text-2xl font-bold mb-1">Create account</h1>
@@ -37,18 +67,29 @@ export default function RegisterPage() {
         Sign up to save your history and access your work from any device.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
           <input
             type="text"
             required
-            minLength={3}
-            maxLength={64}
             value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            onChange={(e) => {
+              setUsername(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, username: undefined }));
+            }}
+            aria-invalid={Boolean(fieldErrors.username)}
+            aria-describedby="username-hint"
+            className={fieldClass(fieldErrors.username)}
           />
+          <p
+            id="username-hint"
+            className={`text-xs ${
+              fieldErrors.username ? "text-red-600 dark:text-red-400" : "text-gray-400"
+            }`}
+          >
+            {fieldErrors.username ?? USERNAME_RULE}
+          </p>
         </div>
 
         <div className="flex flex-col gap-1">
@@ -57,24 +98,40 @@ export default function RegisterPage() {
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            aria-invalid={Boolean(fieldErrors.email)}
+            className={fieldClass(fieldErrors.email)}
           />
+          {fieldErrors.email && (
+            <p className="text-xs text-red-600 dark:text-red-400">{fieldErrors.email}</p>
+          )}
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Password{" "}
-            <span className="text-gray-400 font-normal">(min 8 characters)</span>
-          </label>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
           <input
             type="password"
             required
-            minLength={8}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFieldErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            aria-invalid={Boolean(fieldErrors.password)}
+            aria-describedby="password-hint"
+            className={fieldClass(fieldErrors.password)}
           />
+          <p
+            id="password-hint"
+            className={`text-xs ${
+              fieldErrors.password ? "text-red-600 dark:text-red-400" : "text-gray-400"
+            }`}
+          >
+            {fieldErrors.password ?? PASSWORD_RULE}
+          </p>
         </div>
 
         {error && (

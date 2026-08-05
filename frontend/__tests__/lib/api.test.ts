@@ -134,7 +134,18 @@ describe("API library", () => {
       action: "continue",
       tone: "match",
       model: "standard",
+      instructions: "",
     });
+  });
+
+  it("coWrite sends author instructions separately from the draft", async () => {
+    // Kept out of `text` so the draft stays untrusted (BUG-043) while these
+    // directives are obeyed (BUG-045).
+    mockSuccess({ prompt: "start", suggestions: [], action: "continue", tone: "match", model_used: "standard" });
+    await coWrite("start", 50, 3, "continue", "match", "standard", undefined, "Do not mention battery.");
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.instructions).toBe("Do not mention battery.");
+    expect(body.text).toBe("start");
   });
 
   it("chatWithAI posts message, mode and history", async () => {

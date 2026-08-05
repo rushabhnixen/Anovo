@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from models.schemas import SummarizeRequest, SummarizeResponse
+from services.content_advisory import advise
 from services.summarize_service import summarize as _summarize
 
 router = APIRouter(prefix="/api", tags=["summarize"])
@@ -24,4 +25,5 @@ def summarize_endpoint(request: SummarizeRequest) -> SummarizeResponse:
         original=request.text,
         summary=result,
         mode=request.mode,
+        advisory=advise(request.text),
     )

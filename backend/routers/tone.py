@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
 from models.schemas import ToneRequest, ToneResponse, ToneScore
+from services.content_advisory import advise
 from services.tone_service import detect_tone
 
 router = APIRouter(prefix="/api", tags=["tone"])
@@ -25,4 +26,7 @@ def tone_detect_endpoint(request: ToneRequest) -> ToneResponse:
         text=request.text,
         tones=[ToneScore(**t) for t in result["tones"]],
         primary_tone=result["primary_tone"],
+        # Digits, emoji or JSON still get scored, but the caller is told the
+        # score is not meaningful.
+        advisory=advise(request.text, min_words=3),
     )

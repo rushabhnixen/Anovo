@@ -10,6 +10,7 @@ from models.schemas import (
 )
 from routers.auth import _optional_user_id
 from services.auth_service import get_user_by_id
+from services.content_advisory import advise
 from services.paraphrase_service import paraphrase as _paraphrase
 from services.paraphrase_service import paraphrase_premium as _paraphrase_premium
 from services.paraphrase_service import refine_selection as _refine_selection
@@ -61,6 +62,8 @@ def paraphrase_endpoint(
         intensity=request.intensity,
         model_used=model_used,
         writing_mode=request.writing_mode,
+        # Paraphrasing JSON rewrites keys and values into prose; warn first.
+        advisory=advise(request.text),
     )
 
 

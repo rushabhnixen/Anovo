@@ -178,13 +178,21 @@ class TestSummarize:
 
 class TestTranslate:
     def test_translate_success(self):
-        with patch("routers.translate._translate", return_value="Bonjour le monde"):
+        # _translate now also reports the source language it used (BUG-013).
+        with patch("routers.translate._translate", return_value=("Bonjour le monde", "en")):
             response = client.post("/api/translate", json={"text": "Hello world", "source_language": "en", "target_language": "fr"})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
         assert data["translated"] == "Bonjour le monde"
         assert data["source_language"] == "en"
         assert data["target_language"] == "fr"
+
+    def test_translate_reports_detected_language(self):
+        with patch("routers.translate._translate", return_value=("Hello", "fr")):
+            response = client.post("/api/translate", json={"text": "Bonjour", "source_language": "auto", "target_language": "en"})  # noqa: E501
+        data = response.json()
+        assert data["detected_language"] == "fr"
+        assert data["detected_language_name"] == "French"
 
     def test_translate_empty_text(self):
         response = client.post("/api/translate", json={"text": "", "source_language": "en", "target_language": "fr"})
@@ -277,7 +285,8 @@ class TestTone:
 class TestCoWriter:
     def test_cowrite_success(self):
         suggestions = [" is a rapidly growing field.", " continues to evolve rapidly.", " shapes the modern economy."]
-        with patch("routers.cowriter.generate_suggestions", return_value=(suggestions, "standard")):
+        # generate_suggestions now also returns a truncation advisory (BUG-038).
+        with patch("routers.cowriter.generate_suggestions", return_value=(suggestions, "standard", None)):
             response = client.post("/api/co-write", json={"text": "Artificial intelligence", "max_tokens": 50, "num_suggestions": 3})  # noqa: E501
         assert response.status_code == 200
         data = response.json()
@@ -286,6 +295,35 @@ class TestCoWriter:
         assert data["tone"] == "match"
         assert data["model_used"] == "standard"
         assert data["prompt"] == "Artificial intelligence"
+        # Default tone is "match"; a two-word draft has no voice to copy.
+        assert "Match my voice" in data["advisory"]
+
+    def test_cowrite_no_advisory_with_an_explicit_voice(self):
+        with patch("routers.cowriter.generate_suggestions", return_value=(["a", "b", "c"], "standard", None)):
+            response = client.post("/api/co-write", json={
+                "text": "Artificial intelligence", "max_tokens": 50,
+                "num_suggestions": 3, "tone": "professional",
+            })
+        assert response.json()["advisory"] is None
+
+    def test_cowrite_surfaces_advisory_for_json_input(self):
+        # BUG-035: JSON input produced confident invented prose with no warning.
+        with patch("routers.cowriter.generate_suggestions", return_value=(["a", "b", "c"], "standard", None)):
+            response = client.post(
+                "/api/co-write",
+                json={"text": '{"name":"John","city":"Mumbai"}', "max_tokens": 50, "num_suggestions": 3},
+            )
+        assert response.status_code == 200
+        assert "JSON" in response.json()["advisory"]
+
+    def test_cowrite_truncation_advisory_wins_over_content_advisory(self):
+        with patch("routers.cowriter.generate_suggestions",
+                   return_value=(["a"], "standard", "Your draft was longer than the model's context window.")):
+            response = client.post(
+                "/api/co-write",
+                json={"text": '{"a":1}', "max_tokens": 50, "num_suggestions": 1},
+            )
+        assert "context window" in response.json()["advisory"]
 
     def test_cowrite_empty_text(self):
         response = client.post("/api/co-write", json={"text": "", "max_tokens": 50, "num_suggestions": 3})

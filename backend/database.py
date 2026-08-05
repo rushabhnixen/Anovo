@@ -47,6 +47,9 @@ def _auto_migrate():
     migrations = {
         "is_premium": f"ALTER TABLE users ADD COLUMN is_premium BOOLEAN NOT NULL DEFAULT {default_val}",
         "is_admin": f"ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT {default_val}",
+        # Nullable with no default: existing rows simply have no reset in flight.
+        "reset_token_hash": "ALTER TABLE users ADD COLUMN reset_token_hash VARCHAR(64)",
+        "reset_token_expires": "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP",
     }
     with engine.begin() as conn:
         for col_name, ddl in migrations.items():

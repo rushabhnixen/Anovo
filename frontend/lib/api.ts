@@ -15,6 +15,7 @@ export interface ParaphraseResponse {
   intensity: number;
   model_used?: string;
   writing_mode?: ParaphraseMode;
+  advisory?: string | null;
 }
 
 export type ParaphraseMode =
@@ -47,12 +48,16 @@ export interface GrammarResponse {
   original: string;
   errors: GrammarError[];
   error_count: number;
+  advisory?: string | null;
+  language_supported?: boolean;
+  checked_language?: string;
 }
 
 export interface SummarizeResponse {
   original: string;
   summary: string;
   mode: string;
+  advisory?: string | null;
 }
 
 export interface TranslateResponse {
@@ -60,6 +65,9 @@ export interface TranslateResponse {
   translated: string;
   source_language: string;
   target_language: string;
+  /** Set when source_language is "auto" and detection succeeded. */
+  detected_language?: string | null;
+  detected_language_name?: string | null;
 }
 
 export interface HumanizeResponse {
@@ -71,6 +79,51 @@ export interface HumanizeResponse {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Turn a Pydantic error location (e.g. ["body", "text"]) into "Text". */
+function fieldLabel(loc: unknown): string {
+  if (!Array.isArray(loc)) return "";
+  const name = loc.filter((part) => typeof part === "string" && part !== "body").pop();
+  if (typeof name !== "string") return "";
+  return name.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
+
+/**
+ * FastAPI sends `detail` as a string for a raised HTTPException, but as an
+ * array of objects for a 422 validation failure. Handing that array straight
+ * to `new Error()` stringifies it to "[object Object]", which is what users
+ * saw whenever input failed a length or format rule.
+ */
+function extractErrorMessage(payload: unknown, fallback: string): string {
+  const detail = (payload as { detail?: unknown } | null | undefined)?.detail;
+
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        const msg = (item as { msg?: unknown })?.msg;
+        if (typeof msg !== "string") return "";
+        const label = fieldLabel((item as { loc?: unknown })?.loc);
+        return label ? `${label}: ${msg}` : msg;
+      })
+      .filter(Boolean);
+    if (messages.length) return messages.join(". ");
+  }
+
+  if (detail && typeof detail === "object") {
+    const msg = (detail as { msg?: unknown }).msg;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+
+  return fallback;
+}
+
+async function readError(res: Response, fallback: string): Promise<string> {
+  const payload = await res.json().catch(() => null);
+  return extractErrorMessage(payload, res.statusText || fallback);
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "POST",
@@ -79,8 +132,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new ApiError(err.detail ?? "Request failed", res.status);
+    throw new ApiError(await readError(res, "Request failed"), res.status);
   }
 
   return res.json() as Promise<T>;
@@ -97,8 +149,7 @@ async function postAuth<T>(path: string, body: unknown, token: string): Promise<
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(await readError(res, "Request failed"), res.status);
   }
 
   return res.json() as Promise<T>;
@@ -109,8 +160,7 @@ async function getAuth<T>(path: string, token: string): Promise<T> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(await readError(res, "Request failed"), res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -125,8 +175,7 @@ async function patchAuth<T>(path: string, body: unknown, token: string): Promise
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(await readError(res, "Request failed"), res.status);
   }
   return res.json() as Promise<T>;
 }
@@ -137,8 +186,7 @@ async function deleteAuth(path: string, token: string): Promise<void> {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Request failed");
+    throw new ApiError(await readError(res, "Request failed"), res.status);
   }
 }
 
@@ -261,6 +309,8 @@ export interface PlagiarismResponse {
   similarity_score: number;
   is_plagiarized: boolean;
   threshold: number;
+  advisory?: string | null;
+  compared_chunks?: number;
 }
 
 export interface ToneScore {
@@ -272,6 +322,7 @@ export interface ToneResponse {
   text: string;
   tones: ToneScore[];
   primary_tone: string;
+  advisory?: string | null;
 }
 
 export interface CoWriterResponse {
@@ -280,6 +331,7 @@ export interface CoWriterResponse {
   action: string;
   tone: string;
   model_used: string;
+  advisory?: string | null;
 }
 
 export interface ChatMessage {
@@ -308,8 +360,9 @@ export const coWrite = (
   tone = "match",
   model = "standard",
   token?: string,
+  instructions = "",
 ) => {
-  const body = { text, max_tokens, num_suggestions, action, tone, model };
+  const body = { text, max_tokens, num_suggestions, action, tone, model, instructions };
   return model !== "standard" && token
     ? postAuth<CoWriterResponse>("/api/co-write", body, token)
     : post<CoWriterResponse>("/api/co-write", body);
@@ -340,6 +393,16 @@ export const registerUser = (username: string, email: string, password: string) 
 
 export const loginUser = (email: string, password: string) =>
   post<TokenResponse>("/api/auth/login", { email, password });
+
+export interface MessageResponse {
+  message: string;
+}
+
+export const requestPasswordReset = (email: string) =>
+  post<MessageResponse>("/api/auth/forgot-password", { email });
+
+export const resetPassword = (token: string, password: string) =>
+  post<MessageResponse>("/api/auth/reset-password", { token, password });
 
 export const getCurrentUser = (token: string) =>
   getAuth<UserResponse>("/api/auth/me", token);
@@ -373,8 +436,7 @@ export const uploadDocument = async (
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Upload failed");
+    throw new ApiError(await readError(res, "Upload failed"), res.status);
   }
 
   return res.json() as Promise<DocProcessResponse>;
@@ -391,8 +453,7 @@ export const downloadProcessedDoc = async (
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Download failed");
+    throw new ApiError(await readError(res, "Download failed"), res.status);
   }
 
   return res.blob();
@@ -418,8 +479,7 @@ export const extractDocument = async (file: File): Promise<DocExtractResponse> =
   formData.append("file", file);
   const res = await fetch(`${API_URL}/api/documents/extract`, { method: "POST", body: formData });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail ?? "Could not read this document");
+    throw new ApiError(await readError(res, "Could not read this document"), res.status);
   }
   return res.json() as Promise<DocExtractResponse>;
 };

@@ -31,30 +31,84 @@ LANG_NAMES: dict[str, str] = {
 }
 
 
-def translate(text: str, source_language: str, target_language: str) -> str:
-    """Translate *text* from *source_language* to *target_language*."""
+# Mixed-script input such as "Hello 😀 123 आज मौसम अच्छा है" left the digits in
+# Western form while translating everything else, which reads as half-translated.
+_NUMERAL_RULE = (
+    "Render numbers using the numeral system native to the target language's "
+    "script where one is conventionally used — for example Devanagari (१२३) for "
+    "Hindi, Arabic-Indic (١٢٣) for Arabic, and Western digits (123) for English "
+    "and most European languages. Leave emoji, URLs, e-mail addresses and code "
+    "identifiers exactly as they are."
+)
+
+
+def translate(text: str, source_language: str, target_language: str) -> tuple[str, str | None]:
+    """Translate *text* and report the source language actually used.
+
+    Returns (translated_text, detected_language_code). The second value is None
+    when detection was not possible, and echoes *source_language* when the
+    caller specified one explicitly.
+    """
     try:
         return _translate_llm(text, source_language, target_language)
     except RuntimeError:
-        return _translate_opus(text, source_language, target_language)
+        return _translate_opus(text, source_language, target_language), None
 
 
-def _translate_llm(text: str, src: str, tgt: str) -> str:
+def _translate_llm(text: str, src: str, tgt: str) -> tuple[str, str | None]:
+    import json
+    import re
+
     from services.llm_client import llm_chat
 
     src_name = LANG_NAMES.get(src, src)
     tgt_name = LANG_NAMES.get(tgt, tgt)
+    detecting = src == "auto"
 
-    return llm_chat(
-        system_prompt=(
+    if detecting:
+        # Ask for the detected language in the same call, so auto-detect can be
+        # surfaced in the UI instead of being invisible to the user.
+        system_prompt = (
             "You are a professional translator. Translate accurately while preserving "
-            "tone and nuance. Return ONLY the translated text — no explanations, "
-            "no labels, no quotation marks."
-        ),
-        user_prompt=f"Translate the following from {src_name} to {tgt_name}:\n\n{text}",
+            f"tone and nuance. {_NUMERAL_RULE}\n"
+            'Return ONLY a JSON object: {"detected_language": "<ISO 639-1 code>", '
+            '"translation": "<the translated text>"}\n'
+            "No markdown, no commentary."
+        )
+        user_prompt = f"Detect the language of the following text and translate it to {tgt_name}:\n\n{text}"
+    else:
+        system_prompt = (
+            "You are a professional translator. Translate accurately while preserving "
+            f"tone and nuance. {_NUMERAL_RULE} "
+            "Return ONLY the translated text — no explanations, no labels, no quotation marks."
+        )
+        user_prompt = f"Translate the following from {src_name} to {tgt_name}:\n\n{text}"
+
+    raw = llm_chat(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
         temperature=0.2,
         max_tokens=1024,
     )
+
+    if not detecting:
+        return raw.strip(), src
+
+    cleaned = re.sub(r"```(?:json)?\s*", "", raw, flags=re.IGNORECASE).replace("```", "").strip()
+    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+    if match:
+        try:
+            payload = json.loads(match.group(0))
+            translation = str(payload.get("translation") or "").strip()
+            detected = str(payload.get("detected_language") or "").strip().lower() or None
+            if translation:
+                # Only report codes we can name, so the UI never shows a guess.
+                return translation, (detected if detected in LANG_NAMES else None)
+        except json.JSONDecodeError:
+            pass
+
+    # The model ignored the JSON contract; the text is still usable.
+    return cleaned, None
 
 
 # ── OpusMT fallback ─────────────────────────────────────────────────────────

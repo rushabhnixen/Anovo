@@ -52,6 +52,25 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
 
+    # Password reset
+    # Public origin of the frontend, used to build the link in the reset email.
+    frontend_url: str = "http://localhost:3000"
+    reset_token_expire_minutes: int = 30
+
+    # SMTP. When smtp_host is blank the reset link is written to the application
+    # log instead of being emailed, so the flow is usable in local development
+    # without credentials.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "no-reply@anovo.app"
+    smtp_use_tls: bool = True
+
+    @property
+    def smtp_configured(self) -> bool:
+        return bool(self.smtp_host)
+
     class Config:
         env_file = ".env"
 
