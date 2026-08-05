@@ -8,7 +8,7 @@
 
 | Layer | Tech | Hosting | URL |
 |-------|------|---------|-----|
-| Frontend | Next.js 15, React 18, TailwindCSS 3 | Vercel | https://anovo-frontend.vercel.app (auto-deploys from `main`) |
+| Frontend | Next.js 15, React 18, TailwindCSS 3 | Vercel | https://anovo.vercel.app (auto-deploys from `main`) |
 | Backend | FastAPI 0.111, Python 3.11, PostgreSQL (Neon) | HuggingFace Spaces (Docker) | https://rushabh13-anovo-api.hf.space |
 | Chrome Extension | Manifest V3 (Side Panel API) | Local / Chrome Web Store | Load from `extension/` folder |
 | Source Code | Git | GitHub | https://github.com/rushabhnixen/Anovo |
@@ -314,25 +314,22 @@ Frontend runs at `http://localhost:3000`.
 
 ### Frontend → Vercel
 
-Project: `anovo-frontend` under scope `rushabhs-projects-adfead00`.
+**Live URL: https://anovo.vercel.app**
+
+The project is `anovo-ai-writing-tools`, owned by Vercel team
+`team_tOeCOwe2c5XXRc0DDEtUtVbQ` (see `frontend/.vercel/project.json`). Note this
+is a *different* team from `rushabhs-projects-adfead00`, so a `vercel` CLI login
+scoped to the latter cannot see or deploy this project — it reports
+"Your Project was either deleted, transferred to a new Team, or you don't have
+access to it anymore."
 
 1. Framework preset: **Next.js**
 2. Root directory: `frontend`
 3. Environment variable: `NEXT_PUBLIC_API_URL` = `https://rushabh13-anovo-api.hf.space`
-   (set for Production and Development)
+4. **Auto-deploys on push to `main`** via the GitHub integration — verified working.
 
-**Manual deploy** (works today):
-```bash
-cd frontend
-vercel --prod --yes
-```
-
-**Auto-deploy on push to `main` is NOT currently wired.** `vercel git connect`
-fails because the Vercel GitHub App is not authorised for `rushabhnixen/Anovo`
-under this scope. To enable it: Vercel dashboard → project `anovo-frontend` →
-Settings → Git → connect `rushabhnixen/Anovo`, then set **Root Directory** to
-`frontend` (the CLI project currently uses `.`, which is correct only for
-CLI deploys made from inside `frontend/`).
+No manual step is normally needed. To deploy by hand you must first be on the
+owning team (`vercel switch`), then `cd frontend && vercel --prod`.
 
 ### Backend → HuggingFace Spaces
 
