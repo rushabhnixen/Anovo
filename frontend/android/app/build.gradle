@@ -26,20 +26,35 @@ android {
     //   storePassword=...
     //   keyAlias=...
     //   keyPassword=...
+    // Environment variables take precedence, so a release can be signed without
+    // ever writing the password to disk:
+    //   ANOVO_KEYSTORE_FILE, ANOVO_KEYSTORE_PASSWORD, ANOVO_KEY_ALIAS, ANOVO_KEY_PASSWORD
     def keystorePropertiesFile = rootProject.file("keystore.properties")
     def keystoreProperties = new Properties()
-    def hasKeystore = keystorePropertiesFile.exists()
-    if (hasKeystore) {
+    if (keystorePropertiesFile.exists()) {
         keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    }
+
+    def signingValue = { String env, String prop ->
+        System.getenv(env) ?: keystoreProperties[prop]
+    }
+    def storeFilePath = signingValue('ANOVO_KEYSTORE_FILE', 'storeFile')
+    def storePasswordValue = signingValue('ANOVO_KEYSTORE_PASSWORD', 'storePassword')
+    def keyAliasValue = signingValue('ANOVO_KEY_ALIAS', 'keyAlias')
+    def keyPasswordValue = signingValue('ANOVO_KEY_PASSWORD', 'keyPassword')
+
+    def hasKeystore = storeFilePath && storePasswordValue && keyAliasValue && keyPasswordValue
+    if (hasKeystore && !file(storeFilePath).exists()) {
+        throw new GradleException("Keystore not found at ${storeFilePath}")
     }
 
     signingConfigs {
         if (hasKeystore) {
             release {
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
+                storeFile file(storeFilePath)
+                storePassword storePasswordValue
+                keyAlias keyAliasValue
+                keyPassword keyPasswordValue
             }
         }
     }

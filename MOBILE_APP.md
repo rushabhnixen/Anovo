@@ -49,7 +49,36 @@ Prerequisites: Android Studio, Android SDK 36, Java 21, and a Play Console devel
 6. Create or select a release keystore and keep it outside this repository. Enable Play App Signing.
 7. Upload the `.aab` to an Internal testing release first, complete Play's automated checks, then promote it.
 
-### Signing from the command line
+### Signing from the command line (no password on disk)
+
+Preferred: pass the credentials as environment variables, so nothing is written
+to disk. On Windows, with the upload key stored as an encrypted PowerShell
+credential:
+
+```powershell
+$dir = "$HOME\Documents\Anovo Play Release"
+$cred = Import-CliXml "$dirnovo-upload-key.credential.clixml"
+$pw = $cred.GetNetworkCredential().Password
+$alias = (& keytool -list -v -keystore "$dirnovo-upload-key.jks" -storepass $pw |
+          Select-String '^Alias name: (.+)$').Matches[0].Groups[1].Value.Trim()
+
+$env:ANOVO_KEYSTORE_FILE     = "$dirnovo-upload-key.jks"
+$env:ANOVO_KEYSTORE_PASSWORD = $pw
+$env:ANOVO_KEY_ALIAS         = $alias
+$env:ANOVO_KEY_PASSWORD      = $pw   # change if the key has its own password
+
+cd frontendndroid
+.\gradlew.bat assembleRelease bundleRelease
+```
+
+Outputs:
+- `app/build/outputs/apk/release/app-release.apk`
+- `app/build/outputs/bundle/release/app-release.aab`
+
+Clear the variables afterwards with
+`Remove-Item Env:ANOVO_KEYSTORE_PASSWORD, Env:ANOVO_KEY_PASSWORD`.
+
+### Signing via keystore.properties
 
 Create `frontend/android/keystore.properties` (gitignored, never committed):
 
