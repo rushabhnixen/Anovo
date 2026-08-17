@@ -9,9 +9,13 @@ export const USERNAME_RULE =
   "Username must be 3-32 characters, contain at least one letter, and use only letters, numbers, dots, underscores or hyphens.";
 
 export const PASSWORD_RULE =
-  "Password must be at least 8 characters and include at least one letter and one number.";
+  "Password must be at least 8 characters, include at least one letter and one number, and contain no spaces or emoji.";
 
 const USERNAME_RE = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/;
+
+// QA follow-up on BUG-007: "abc123 <emoji>" satisfied letter+digit and was
+// accepted. Spaces and emoji are rejected outright — printable ASCII only.
+const ALLOWED_PASSWORD_CHARS = /^[!-~]+$/;
 
 // bcrypt truncates past 72 bytes. Emoji cost 4 bytes each, so a password can be
 // well under 128 characters and still be too long.
@@ -49,6 +53,7 @@ export function validateUsername(value: string): string | null {
 export function validatePassword(value: string): string | null {
   if (value.length < 8) return PASSWORD_RULE;
   if (!value.trim()) return PASSWORD_RULE;
+  if (!ALLOWED_PASSWORD_CHARS.test(value)) return PASSWORD_RULE;
   if (!/[A-Za-z]/.test(value)) return PASSWORD_RULE;
   if (!/[0-9]/.test(value)) return PASSWORD_RULE;
   if (byteLength(value) > BCRYPT_MAX_BYTES) {

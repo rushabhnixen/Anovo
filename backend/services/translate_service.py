@@ -5,6 +5,8 @@ Uses LLM (Groq / HF Inference) when available; falls back to Helsinki-NLP OpusMT
 """
 from __future__ import annotations
 
+import re
+
 # Map language codes to full names for better LLM prompts
 LANG_NAMES: dict[str, str] = {
     "auto": "the automatically detected source language",
@@ -48,67 +50,82 @@ def translate(text: str, source_language: str, target_language: str) -> tuple[st
     Returns (translated_text, detected_language_code). The second value is None
     when detection was not possible, and echoes *source_language* when the
     caller specified one explicitly.
+
+    Detection is deliberately a SEPARATE, best-effort call. An earlier version
+    asked the model to return the translation and the detected language together
+    as one JSON object; the model frequently ignored that contract and the user
+    got an empty translation. Translation quality must never depend on the
+    detection feature working.
     """
     try:
-        return _translate_llm(text, source_language, target_language)
+        translated = _translate_llm(text, source_language, target_language)
     except RuntimeError:
         return _translate_opus(text, source_language, target_language), None
 
+    if base_language(source_language) != "auto":
+        return translated, source_language
+    return translated, _detect_language(text)
 
-def _translate_llm(text: str, src: str, tgt: str) -> tuple[str, str | None]:
-    import json
-    import re
 
+def base_language(language: str) -> str:
+    """"en-US" -> "en"."""
+    return (language or "").split("-")[0].strip().lower()
+
+
+def _translate_llm(text: str, src: str, tgt: str) -> str:
+    """Plain-text translation. One job, no structured-output contract."""
     from services.llm_client import llm_chat
 
     src_name = LANG_NAMES.get(src, src)
     tgt_name = LANG_NAMES.get(tgt, tgt)
-    detecting = src == "auto"
+    source_clause = (
+        f"from {src_name} " if base_language(src) != "auto" else ""
+    )
 
-    if detecting:
-        # Ask for the detected language in the same call, so auto-detect can be
-        # surfaced in the UI instead of being invisible to the user.
-        system_prompt = (
-            "You are a professional translator. Translate accurately while preserving "
-            f"tone and nuance. {_NUMERAL_RULE}\n"
-            'Return ONLY a JSON object: {"detected_language": "<ISO 639-1 code>", '
-            '"translation": "<the translated text>"}\n'
-            "No markdown, no commentary."
-        )
-        user_prompt = f"Detect the language of the following text and translate it to {tgt_name}:\n\n{text}"
-    else:
-        system_prompt = (
+    raw = llm_chat(
+        system_prompt=(
             "You are a professional translator. Translate accurately while preserving "
             f"tone and nuance. {_NUMERAL_RULE} "
             "Return ONLY the translated text — no explanations, no labels, no quotation marks."
-        )
-        user_prompt = f"Translate the following from {src_name} to {tgt_name}:\n\n{text}"
-
-    raw = llm_chat(
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
+        ),
+        user_prompt=f"Translate the following {source_clause}to {tgt_name}:\n\n{text}",
         temperature=0.2,
         max_tokens=1024,
     )
 
-    if not detecting:
-        return raw.strip(), src
+    translated = raw.strip()
+    if not translated:
+        # Returning "" silently showed the user an empty result box. Fail loudly
+        # so the caller can fall back instead.
+        raise RuntimeError("The translation model returned an empty response")
+    return translated
 
-    cleaned = re.sub(r"```(?:json)?\s*", "", raw, flags=re.IGNORECASE).replace("```", "").strip()
-    match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
-    if match:
-        try:
-            payload = json.loads(match.group(0))
-            translation = str(payload.get("translation") or "").strip()
-            detected = str(payload.get("detected_language") or "").strip().lower() or None
-            if translation:
-                # Only report codes we can name, so the UI never shows a guess.
-                return translation, (detected if detected in LANG_NAMES else None)
-        except json.JSONDecodeError:
-            pass
 
-    # The model ignored the JSON contract; the text is still usable.
-    return cleaned, None
+def _detect_language(text: str) -> str | None:
+    """Best-effort source-language detection. Never raises."""
+    from services.llm_client import llm_chat
+
+    try:
+        raw = llm_chat(
+            system_prompt=(
+                "You identify the language of text. Reply with ONLY the two-letter "
+                "ISO 639-1 code (for example: en, fr, es, hi). No other text."
+            ),
+            user_prompt=f"What language is this?\n\n{text[:600]}",
+            temperature=0.0,
+            # GPT-OSS spends part of this budget on reasoning tokens before it
+            # emits any visible text, so a tight cap returns an empty string.
+            max_tokens=256,
+        )
+    except Exception:
+        return None
+
+    match = re.search(r"[A-Za-z]{2,3}", raw or "")
+    if not match:
+        return None
+    code = match.group(0).lower()
+    # Only report codes we can name, so the UI never shows a bare guess.
+    return code if code in LANG_NAMES else None
 
 
 # ── OpusMT fallback ─────────────────────────────────────────────────────────

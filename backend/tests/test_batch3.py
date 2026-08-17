@@ -81,10 +81,10 @@ class TestTranslator:
 
     def test_auto_detect_reports_the_detected_language(self):
         # BUG-013: detection worked but was never shown to the user.
+        # Detection is a SEPARATE call from the translation.
         from services import translate_service
 
-        raw = '{"detected_language": "fr", "translation": "Hello, how are you?"}'
-        with patch("services.llm_client.llm_chat", return_value=raw):
+        with patch("services.llm_client.llm_chat", side_effect=["Hello, how are you?", "fr"]):
             translated, detected = translate_service.translate(
                 "Bonjour, comment allez-vous ?", "auto", "en"
             )
@@ -95,29 +95,40 @@ class TestTranslator:
     def test_explicit_source_language_is_echoed_back(self):
         from services import translate_service
 
-        with patch("services.llm_client.llm_chat", return_value="Bonjour"):
+        with patch("services.llm_client.llm_chat", return_value="Bonjour") as mock:
             translated, detected = translate_service.translate("Hello", "en", "fr")
 
         assert translated == "Bonjour"
         assert detected == "en"
+        # No detection call when the caller already told us the language.
+        assert mock.call_count == 1
 
-    def test_unparseable_detection_still_returns_the_translation(self):
+    def test_failed_detection_does_not_break_the_translation(self):
+        # The regression this replaced: asking for translation+detection as one
+        # JSON object made ~3 of 4 auto-detect translations come back empty.
         from services import translate_service
 
-        with patch("services.llm_client.llm_chat", return_value="Just the translation."):
-            translated, detected = translate_service.translate("Bonjour", "auto", "en")
+        with patch("services.llm_client.llm_chat", side_effect=["Hello there.", RuntimeError("boom")]):
+            translated, detected = translate_service.translate("Bonjour.", "auto", "en")
 
-        assert translated == "Just the translation."
+        assert translated == "Hello there."
         assert detected is None
 
     def test_unknown_detected_code_is_not_reported(self):
         from services import translate_service
 
-        raw = '{"detected_language": "zzz", "translation": "text"}'
-        with patch("services.llm_client.llm_chat", return_value=raw):
+        with patch("services.llm_client.llm_chat", side_effect=["Hello", "zzz"]):
             _, detected = translate_service.translate("x", "auto", "en")
 
         assert detected is None
+
+    def test_empty_translation_raises_instead_of_returning_blank(self):
+        # An empty string used to reach the UI as a blank result box.
+        from services import translate_service
+
+        with patch("services.llm_client.llm_chat", return_value="   "):
+            with pytest.raises(RuntimeError, match="empty response"):
+                translate_service._translate_llm("Bonjour", "fr", "en")
 
 
 # ── Summarizer (BUG-014, BUG-015) ────────────────────────────────────────────

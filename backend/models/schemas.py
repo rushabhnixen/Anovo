@@ -221,8 +221,15 @@ _USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$")
 _BCRYPT_MAX_BYTES = 72
 
 PASSWORD_RULE = (
-    "Password must be at least 8 characters and include at least one letter "
-    "and one number."
+    "Password must be at least 8 characters, include at least one letter and "
+    "one number, and contain no spaces or emoji."
+)
+
+# QA follow-up on BUG-007: "abc123 \U0001f600" satisfied letter+digit and was
+# accepted. Whitespace inside a password is a common typo source and emoji are
+# unreliable to re-enter across keyboards, so both are rejected outright.
+_ALLOWED_PASSWORD_CHARS = re.compile(
+    r"^[A-Za-z0-9!\"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]+$"
 )
 USERNAME_RULE = (
     "Username must be 3-32 characters, contain at least one letter, and use "
@@ -245,6 +252,10 @@ def validate_password(value: str) -> str:
     """Shared password rule. Raises ValueError with a user-facing message."""
     if not value.strip():
         # Rejects passwords made entirely of whitespace.
+        raise ValueError(PASSWORD_RULE)
+    if not _ALLOWED_PASSWORD_CHARS.match(value):
+        # Catches spaces, tabs, emoji and other non-typeable characters even
+        # when a letter and a digit are also present.
         raise ValueError(PASSWORD_RULE)
     if not any(char.isalpha() for char in value):
         raise ValueError(PASSWORD_RULE)

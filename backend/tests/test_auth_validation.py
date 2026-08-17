@@ -234,3 +234,27 @@ class TestSummarizeLanguage:
             summarize_service._summarize_llm("कुछ पाठ", "bullet", 150)
 
         assert "SAME language" in mock_chat.call_args.kwargs["user_prompt"]
+
+
+class TestPasswordCharacterRule:
+    """QA follow-up on BUG-007: emoji and spaces slipped through when a letter
+    and a digit were also present."""
+
+    @pytest.mark.parametrize(
+        "password",
+        [
+            "abc123 456",              # space alongside letter + digit
+            "pass 1234",
+            "abc123\U0001f600",        # emoji alongside letter + digit
+            "\U0001f600abc12345",
+            "abc\t12345",              # tab
+            "caf\u00e912345",          # non-ASCII letter
+        ],
+    )
+    def test_rejects_spaces_and_emoji(self, password):
+        with pytest.raises(ValidationError):
+            _register(password=password)
+
+    @pytest.mark.parametrize("password", ["password1", "Str0ngPass", "P@ssw0rd!", "a1b2c3d4"])
+    def test_still_accepts_normal_passwords(self, password):
+        assert _register(password=password).password == password

@@ -25,10 +25,15 @@ describe("password validation (BUG-007, BUG-009)", () => {
     expect(validatePassword(value)).toBeNull();
   });
 
-  it("rejects an emoji password that exceeds bcrypt's 72-byte limit", () => {
-    // 4 bytes per emoji. JS length is 40 UTF-16 units, so the browser's own
-    // minLength check passes while bcrypt would truncate it.
-    expect(validatePassword("ab1" + "\u{1F600}".repeat(20))).toMatch(/too long/);
+  it("rejects an emoji password (now caught by the character rule)", () => {
+    // JS length is 40 UTF-16 units, so the browser's own minLength check
+    // passes. Emoji are rejected outright since BUG-007's QA follow-up.
+    expect(validatePassword("ab1" + "\u{1F600}".repeat(20))).not.toBeNull();
+  });
+
+  it("still enforces bcrypt's 72-byte limit for allowed characters", () => {
+    // 73 ASCII characters: passes the character rule, exceeds 72 bytes.
+    expect(validatePassword("a1" + "x".repeat(71))).toMatch(/too long/);
   });
 });
 
@@ -53,4 +58,21 @@ describe("username validation (BUG-008, BUG-010)", () => {
       expect(validateUsername(value)).toBeNull();
     },
   );
+});
+
+describe("password rejects spaces and emoji (BUG-007 QA follow-up)", () => {
+  it.each([
+    "abc123 456",        // space, but has letter + digit
+    "pass 1234",
+    "abc123\u{1F600}",   // emoji alongside letter + digit
+    "\u{1F600}abc12345",
+    "abc\t12345",        // tab
+    "café12345",         // non-ASCII letter
+  ])("rejects %p", (value) => {
+    expect(validatePassword(value)).not.toBeNull();
+  });
+
+  it.each(["password1", "Str0ngPass", "P@ssw0rd!", "a1b2c3d4"])("still accepts %p", (value) => {
+    expect(validatePassword(value)).toBeNull();
+  });
 });

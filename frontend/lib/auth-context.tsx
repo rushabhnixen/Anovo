@@ -7,6 +7,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import { getCurrentUser, UserResponse } from "./api";
 
 interface AuthContextValue {
@@ -28,6 +29,7 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("anovo_token");
     setToken(null);
     setUser(null);
-  }, []);
+    // Signing out previously left the user on the page they were on, including
+    // account-only pages that then rendered empty. Send them to sign-in.
+    router.push("/login");
+  }, [router]);
 
   const refreshUser = useCallback(() => {
     if (token) {
