@@ -56,18 +56,21 @@ to disk. On Windows, with the upload key stored as an encrypted PowerShell
 credential:
 
 ```powershell
-$dir = "$HOME\Documents\Anovo Play Release"
-$cred = Import-CliXml "$dirnovo-upload-key.credential.clixml"
-$pw = $cred.GetNetworkCredential().Password
-$alias = (& keytool -list -v -keystore "$dirnovo-upload-key.jks" -storepass $pw |
+$dir  = "$HOME\Documents\Anovo Play Release"
+$jks  = Join-Path $dir 'anovo-upload-key.jks'
+$cred = Import-CliXml (Join-Path $dir 'anovo-upload-key.credential.clixml')
+$pw   = $cred.GetNetworkCredential().Password
+
+# Confirm the alias stored in the keystore
+$alias = (& keytool -list -v -keystore $jks -storepass $pw |
           Select-String '^Alias name: (.+)$').Matches[0].Groups[1].Value.Trim()
 
-$env:ANOVO_KEYSTORE_FILE     = "$dirnovo-upload-key.jks"
+$env:ANOVO_KEYSTORE_FILE     = $jks
 $env:ANOVO_KEYSTORE_PASSWORD = $pw
 $env:ANOVO_KEY_ALIAS         = $alias
 $env:ANOVO_KEY_PASSWORD      = $pw   # change if the key has its own password
 
-cd frontendndroid
+Set-Location "$HOME\Desktop\Projects\2026\Anovo\frontend\android"
 .\gradlew.bat assembleRelease bundleRelease
 ```
 
