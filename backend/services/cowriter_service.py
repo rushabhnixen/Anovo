@@ -246,8 +246,13 @@ def _parse_suggestions(raw: str, source_text: str, count: int) -> list[str]:
             pass
 
     if not suggestions:
+        # Reached when the model's array is truncated mid-stream, so lines still
+        # carry JSON punctuation. Stripping only quotes left a leading '["' in
+        # the text shown to the user.
         for line in cleaned.splitlines():
-            value = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line).strip(' \t"“”')
+            value = re.sub(r"^\s*(?:[-*•]|\d+[.)])\s*", "", line)
+            value = value.strip().strip("[]").strip().rstrip(",").strip()
+            value = value.strip('"“”\'').strip()
             if value and value not in {"[]", "{}"}:
                 suggestions.append(value)
 

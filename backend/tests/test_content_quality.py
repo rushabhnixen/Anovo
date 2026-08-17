@@ -451,3 +451,16 @@ class TestFigureGrounding:
             )
 
         assert len(suggestions) == 2
+
+    def test_truncated_json_array_does_not_leak_punctuation(self):
+        # Live output showed a suggestion beginning with '["' when the model's
+        # array was cut off by the token limit.
+        from services.cowriter_service import _parse_suggestions
+
+        truncated = '["A startup is a venture that brings a product to market,'
+        result = _parse_suggestions(truncated, "Startup", 3)
+
+        assert result
+        assert not result[0].startswith("[")
+        assert '"' not in result[0]
+        assert result[0].startswith("A startup is a venture")
