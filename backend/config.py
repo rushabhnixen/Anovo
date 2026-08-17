@@ -57,9 +57,15 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     reset_token_expire_minutes: int = 30
 
-    # SMTP. When smtp_host is blank the reset link is written to the application
-    # log instead of being emailed, so the flow is usable in local development
-    # without credentials.
+    # Brevo HTTPS API. Preferred on HuggingFace Spaces, which blocks outbound
+    # SMTP ports (25/465/587) — smtplib times out there no matter the
+    # credentials. This is a v3 API key (xkeysib-...), NOT the SMTP key.
+    brevo_api_key: str = ""
+    email_from_name: str = "Anovo"
+
+    # SMTP. Used when no Brevo API key is set. When neither is configured the
+    # reset link is written to the application log instead of being emailed, so
+    # the flow is usable in local development without credentials.
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_user: str = ""

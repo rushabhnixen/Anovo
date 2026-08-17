@@ -258,3 +258,78 @@ class TestPasswordCharacterRule:
     @pytest.mark.parametrize("password", ["password1", "Str0ngPass", "P@ssw0rd!", "a1b2c3d4"])
     def test_still_accepts_normal_passwords(self, password):
         assert _register(password=password).password == password
+
+
+# ── Mail transport: HF Spaces blocks SMTP ports, so Brevo's API is preferred ──
+
+class TestMailTransport:
+    def _settings(self, monkeypatch, **overrides):
+        from config import settings
+
+        defaults = {
+            "brevo_api_key": "", "smtp_host": "", "smtp_from": "noreply@example.com",
+            "email_from_name": "Anovo", "smtp_user": "", "smtp_password": "",
+            "smtp_port": 587, "smtp_use_tls": True,
+        }
+        for key, value in {**defaults, **overrides}.items():
+            monkeypatch.setattr(settings, key, value, raising=False)
+
+    def test_prefers_the_brevo_api_when_a_key_is_set(self, monkeypatch):
+        from unittest.mock import MagicMock, patch
+
+        from services import mailer
+
+        # Both configured: the API must win, because SMTP cannot connect on HF.
+        self._settings(monkeypatch, brevo_api_key="xkeysib-test", smtp_host="smtp-relay.brevo.com")
+        response = MagicMock(status_code=201, text="")
+        with patch("services.mailer.httpx.post", return_value=response) as post, \
+             patch("services.mailer.smtplib.SMTP") as smtp:
+            assert mailer.send_email("user@example.com", "Subject", "Body") is True
+
+        smtp.assert_not_called()
+        payload = post.call_args.kwargs["json"]
+        assert payload["to"] == [{"email": "user@example.com"}]
+        assert payload["sender"]["email"] == "noreply@example.com"
+        assert post.call_args.kwargs["headers"]["api-key"] == "xkeysib-test"
+
+    def test_brevo_rejection_returns_false_and_is_logged(self, monkeypatch, caplog):
+        from unittest.mock import MagicMock, patch
+
+        from services import mailer
+
+        self._settings(monkeypatch, brevo_api_key="xkeysib-test")
+        response = MagicMock(status_code=400, text='{"message":"Sender not valid"}')
+        with patch("services.mailer.httpx.post", return_value=response):
+            assert mailer.send_email("user@example.com", "Subject", "Body") is False
+        assert "Brevo rejected" in caplog.text
+
+    def test_falls_back_to_smtp_without_an_api_key(self, monkeypatch):
+        from unittest.mock import MagicMock, patch
+
+        from services import mailer
+
+        self._settings(monkeypatch, smtp_host="smtp.example.com", smtp_user="u", smtp_password="p")
+        with patch("services.mailer.smtplib.SMTP") as smtp:
+            smtp.return_value.__enter__.return_value = MagicMock()
+            assert mailer.send_email("user@example.com", "Subject", "Body") is True
+        smtp.assert_called_once()
+
+    def test_logs_the_message_when_nothing_is_configured(self, monkeypatch, caplog):
+        from services import mailer
+
+        self._settings(monkeypatch)
+        assert mailer.send_email("user@example.com", "Subject", "Body") is False
+        assert "No email provider configured" in caplog.text
+
+    def test_reset_email_carries_the_link_and_expiry(self, monkeypatch):
+        from unittest.mock import MagicMock, patch
+
+        from services import mailer
+
+        self._settings(monkeypatch, brevo_api_key="xkeysib-test")
+        with patch("services.mailer.httpx.post", return_value=MagicMock(status_code=201, text="")) as post:
+            mailer.send_password_reset("user@example.com", "https://anovo.vercel.app/reset-password?token=abc", 30)
+
+        content = post.call_args.kwargs["json"]["textContent"]
+        assert "https://anovo.vercel.app/reset-password?token=abc" in content
+        assert "30 minutes" in content
