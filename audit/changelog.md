@@ -59,11 +59,29 @@ also present. Passwords are printable ASCII only now.
 - 194 backend tests, 100 frontend tests, flake8/ESLint/tsc clean.
 - Every fix confirmed against the live API, not just unit tests.
 
+**BUG-037, BUG-045** (added after the first pass of this round)
+- 037: the prompt's stated word limit did not hold, so suggestions are trimmed to
+  the requested count, preferring a sentence boundary. Verified live: 30-32 words
+  against a 45 cap, previously well over.
+- 045: QA typed the constraint into the draft, which is ignored by design — that
+  is what stops BUG-043's injection. Rather than weaken the guard, directive-shaped
+  text in the draft now produces an advisory pointing at the Instructions field,
+  suppressed once that field is used. Verified live that the field is honoured:
+  battery/camera/display absent from output.
+
+**Mobile APK**
+- Built a debug APK from the re-synced bundle and confirmed by unpacking it that
+  it contains the forgot-password and reset-password routes, the new validation
+  text, the sign-out dialog, the #020617 dark status bar, and the HF backend URL.
+  A release build still needs the project keystore.
+
+**Housekeeping**
+- Deleted the stray `a@b.com` test account (id 42) created accidentally while
+  probing production during the previous round.
+
 ### Not fixed
-- **BUG-004**: reset flow works; SMTP is not configured, so no email is sent.
-- **BUG-037** (short length runs long) and **BUG-045** (negative instructions):
-  both Low. 045 is likely discoverability — the Instructions field exists, but
-  QA probably typed the constraint into the draft, which is ignored by design.
+- **BUG-004**: the reset flow works end to end; SMTP is simply not configured, so
+  no mail is sent. Requires credentials, which cannot be set from here.
 - **BUG-032**: QA now marks it Solved.
 
 ---
