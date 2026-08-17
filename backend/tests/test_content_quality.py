@@ -398,3 +398,56 @@ class TestGrammarSupplementaryPass:
         with patch("services.llm_client.llm_chat", return_value="[]") as mock:
             grammar_service._check_llm("मुझे किताब पढ़ना पसंद हैं।", "hi")
         assert "written in Hindi" in mock.call_args.kwargs["system_prompt"]
+
+
+# ── QA re-test: invented figures are filtered, not just discouraged (036, 042) ─
+
+class TestFigureGrounding:
+    def test_detects_figures_absent_from_the_draft(self):
+        from services.cowriter_service import _invents_figures
+
+        assert _invents_figures("Revenue grew 40% in 2023.", "Startup")
+        assert _invents_figures("It saves $2 million annually.", "Faster communication.")
+        assert _invents_figures("Productivity rose 3x.", "Better productivity.")
+
+    def test_figures_already_in_the_draft_are_allowed(self):
+        from services.cowriter_service import _invents_figures
+
+        assert not _invents_figures("That 40% gain compounds.", "We saw a 40% gain last quarter.")
+        assert not _invents_figures("No numbers at all here.", "Startup")
+
+    def test_fabricated_options_are_dropped(self):
+        from services import cowriter_service
+
+        raw = '["Revenue grew 40% in 2023.", "A startup must find its first customers."]'
+        with patch("services.llm_client.llm_chat", return_value=raw):
+            suggestions, _ = cowriter_service._suggest_llm(
+                "Startup", 60, 2, "expand", "professional", "standard"
+            )
+
+        assert suggestions == ["A startup must find its first customers."]
+
+    def test_retries_once_when_every_option_is_fabricated(self):
+        from services import cowriter_service
+
+        bad = '["Revenue grew 40%.", "Costs fell $2 million."]'
+        good = '["A startup must earn its first customers.", "Focus beats breadth early on."]'
+        with patch("services.llm_client.llm_chat", side_effect=[bad, good]) as mock:
+            suggestions, _ = cowriter_service._suggest_llm(
+                "Startup", 60, 2, "expand", "professional", "standard"
+            )
+
+        assert mock.call_count == 2
+        assert "previous attempt invented specific figures" in mock.call_args.kwargs["user_prompt"]
+        assert all("%" not in s and "$" not in s for s in suggestions)
+
+    def test_returns_the_retry_rather_than_nothing_if_it_still_fabricates(self):
+        from services import cowriter_service
+
+        bad = '["Revenue grew 40%.", "Costs fell 12%."]'
+        with patch("services.llm_client.llm_chat", side_effect=[bad, bad]):
+            suggestions, _ = cowriter_service._suggest_llm(
+                "Startup", 60, 2, "expand", "professional", "standard"
+            )
+
+        assert len(suggestions) == 2

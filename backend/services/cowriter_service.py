@@ -48,6 +48,34 @@ _NO_FABRICATION = (
 # 9,000-character window, which silently discarded the start of long drafts.
 _CONTEXT_LIMIT = 24000
 
+# Prompt instructions alone did not stop invented figures (QA re-test of
+# BUG-036/042: "Startup" produced specific growth percentages and revenue
+# numbers). These patterns catch the concrete claims that matter, so a suggestion
+# citing a figure absent from the draft can be rejected outright.
+_FIGURE_PATTERNS = (
+    r"\d+(?:\.\d+)?\s?%",                                  # 40%, 12.5 %
+    r"[$£€₹]\s?\d",                                         # $2, ₹50
+    r"\b\d+(?:\.\d+)?\s?(?:x|times)\b",                     # 3x, 2.5 times
+    r"\b\d+(?:[.,]\d+)?\s?(?:million|billion|trillion|crore|lakh)\b",
+    r"\b(?:19|20)\d{2}\b",                                  # a specific year
+    r"\b\d+\s?(?:percent|per cent)\b",
+)
+
+
+def _figures(text: str) -> set[str]:
+    """Statistic-like tokens in *text*, normalised for comparison."""
+    found: set[str] = set()
+    for pattern in _FIGURE_PATTERNS:
+        for match in re.findall(pattern, text, flags=re.IGNORECASE):
+            found.add(re.sub(r"\s+", "", match).lower())
+    return found
+
+
+def _invents_figures(suggestion: str, source: str) -> bool:
+    """True when *suggestion* cites a figure that is not in *source*."""
+    return bool(_figures(suggestion) - _figures(source))
+
+
 TRUNCATION_ADVISORY = (
     "Your draft was longer than the model's context window, so only the last "
     "{kept:,} of {total:,} characters were used. Split it into sections for "
@@ -165,7 +193,43 @@ def _suggest_llm(
             max_tokens=max(1024, max_tokens * n + 220),
         )
 
-    return _parse_suggestions(raw, text, n), model_used
+    suggestions = _parse_suggestions(raw, text, n)
+
+    # Drop options that cite figures the draft never mentioned. Prompt rules
+    # alone did not stop this, and an invented statistic is the most damaging
+    # thing the co-writer can produce.
+    grounded = [s for s in suggestions if not _invents_figures(s, text)]
+    if grounded:
+        return grounded, model_used
+
+    # Everything was fabricated: retry once, stating the ban far more bluntly.
+    retry_prompt = (
+        f"{user_prompt}\n\n"
+        "Your previous attempt invented specific figures. Write these options "
+        "with NO numbers, percentages, currency amounts, dates or statistics of "
+        "any kind unless they already appear inside <draft>."
+    )
+    if model == "standard":
+        raw = llm_chat(
+            system_prompt=system_prompt,
+            user_prompt=retry_prompt,
+            temperature=0.4,
+            max_tokens=max(1024, max_tokens * n + 220),
+        )
+    else:
+        raw, model_used = llm_chat_premium(
+            system_prompt=system_prompt,
+            user_prompt=retry_prompt,
+            model=model,
+            temperature=0.4,
+            max_tokens=max(1024, max_tokens * n + 220),
+        )
+
+    retried = _parse_suggestions(raw, text, n)
+    grounded = [s for s in retried if not _invents_figures(s, text)]
+    # If the model still will not comply, return the retry rather than nothing;
+    # the caller's advisory is the remaining safeguard.
+    return (grounded or retried), model_used
 
 
 def _parse_suggestions(raw: str, source_text: str, count: int) -> list[str]:
