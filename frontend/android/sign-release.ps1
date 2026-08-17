@@ -69,13 +69,32 @@ finally {
 }
 
 # ── Verify the outputs are actually signed ───────────────────────────────────
+# APKs and AABs use different signing schemes, and checking the wrong one gives a
+# false "UNSIGNED". With minSdk >= 24 the Gradle plugin skips v1 (JAR) signing,
+# so a release APK has no META-INF/*.RSA at all — it carries a v2/v3 APK Signing
+# Block instead, which only apksigner can read. AABs are not APKs and do use
+# jarsigner-style signatures, so the META-INF check is correct for them.
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-function Test-Signed($path) {
-    if (-not (Test-Path $path)) { return $null }
+
+function Test-BundleSigned($path) {
     $zip = [System.IO.Compression.ZipFile]::OpenRead($path)
     try {
         return [bool]($zip.Entries | Where-Object { $_.FullName -match '^META-INF/.*\.(RSA|DSA|EC)$' })
     } finally { $zip.Dispose() }
+}
+
+function Test-ApkSigned($path) {
+    $apksigner = Get-ChildItem (Join-Path $sdk 'build-tools') -Filter 'apksigner.bat' -Recurse -ErrorAction SilentlyContinue |
+                 Sort-Object FullName | Select-Object -Last 1
+    if (-not $apksigner) {
+        Write-Host 'apksigner not found; cannot verify the APK signature.' -ForegroundColor Yellow
+        return $null
+    }
+    $out = & $apksigner.FullName verify --print-certs $path 2>&1
+    if ($LASTEXITCODE -ne 0) { return $false }
+    $signer = ($out | Select-String 'certificate DN: (.+)$').Matches
+    if ($signer) { Write-Host "     signer: $($signer[0].Groups[1].Value)" }
+    return $true
 }
 
 $apk = Join-Path $androidDir 'app\build\outputs\apk\release\app-release.apk'
@@ -84,13 +103,17 @@ $aab = Join-Path $androidDir 'app\build\outputs\bundle\release\app-release.aab'
 Write-Host ''
 $ok = $true
 foreach ($artifact in @(@{ Path = $apk; Label = 'APK' }, @{ Path = $aab; Label = 'AAB' })) {
-    $signed = Test-Signed $artifact.Path
-    if ($null -eq $signed) {
-        Write-Host "$($artifact.Label): NOT PRODUCED" -ForegroundColor Red; $ok = $false
-    } elseif ($signed) {
-        $size = [math]::Round((Get-Item $artifact.Path).Length / 1MB, 2)
+    if (-not (Test-Path $artifact.Path)) {
+        Write-Host "$($artifact.Label): NOT PRODUCED" -ForegroundColor Red; $ok = $false; continue
+    }
+    $size = [math]::Round((Get-Item $artifact.Path).Length / 1MB, 2)
+    $signed = if ($artifact.Label -eq 'APK') { Test-ApkSigned $artifact.Path } else { Test-BundleSigned $artifact.Path }
+
+    if ($signed) {
         Write-Host "$($artifact.Label): signed, $size MB" -ForegroundColor Green
         Write-Host "     $($artifact.Path)"
+    } elseif ($null -eq $signed) {
+        Write-Host "$($artifact.Label): $size MB, signature NOT VERIFIED" -ForegroundColor Yellow
     } else {
         Write-Host "$($artifact.Label): UNSIGNED — Play will reject this" -ForegroundColor Red; $ok = $false
     }
