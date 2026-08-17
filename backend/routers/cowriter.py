@@ -5,7 +5,12 @@ from database import get_db
 from models.schemas import CoWriterRequest, CoWriterResponse
 from routers.auth import _optional_user_id
 from services.auth_service import get_user_by_id
-from services.content_advisory import advise
+from services.content_advisory import (
+    NO_ANALYSABLE_TEXT,
+    STRUCTURED_INPUT,
+    advise,
+    refusal,
+)
 from services.cowriter_service import generate_suggestions, voice_sample_advisory
 
 router = APIRouter(prefix="/api", tags=["co-writer"])
@@ -31,6 +36,12 @@ def cowriter_endpoint(
         if not user or not user.is_premium:
             raise HTTPException(status_code=403, detail="Premium subscription required")
 
+    # The co-writer invents prose. Given "123456789", "@@@@" or a JSON object it
+    # produces confident content unrelated to the input, so decline instead.
+    declined = refusal(request.text, NO_ANALYSABLE_TEXT + STRUCTURED_INPUT)
+    if declined:
+        raise HTTPException(status_code=422, detail=declined)
+
     try:
         suggestions, model_used, truncation_advisory = generate_suggestions(
             request.text,
@@ -50,8 +61,8 @@ def cowriter_endpoint(
         action=request.action,
         tone=request.tone,
         model_used=model_used,
-        # Most specific first. No min_words on advise(): expanding a short seed
-        # like "Artificial intelligence" is exactly what the co-writer is for.
+        # Most specific first. No min_words: expanding a short seed like
+        # "Artificial intelligence" is exactly what the co-writer is for.
         advisory=(
             truncation_advisory
             or advise(request.text)

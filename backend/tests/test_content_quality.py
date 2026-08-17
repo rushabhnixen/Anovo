@@ -17,8 +17,13 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from fastapi.testclient import TestClient  # noqa: E402
+
+from main import app  # noqa: E402
 from services import content_advisory  # noqa: E402
 from services.content_advisory import advise  # noqa: E402
+
+client = TestClient(app)
 
 
 # ── Input advisories ─────────────────────────────────────────────────────────
@@ -229,3 +234,74 @@ class TestCoWriterPrompt:
         assert len(result) == 3
         suggestions, model_used, _ = result
         assert suggestions and isinstance(model_used, str)
+
+
+# ── QA re-test: verdict/generation tools refuse instead of warning ────────────
+
+class TestRefusalPolicy:
+    """QA rejected warn-but-process wherever the tool emits a verdict or invented
+    content. Tools whose output is a transformation the user can judge (paraphrase,
+    summarize) keep the advisory."""
+
+    @pytest.mark.parametrize(
+        "text",
+        ["123456789", "@#$%^&*()", "\U0001f60a\U0001f525\u2764\ufe0f"],
+    )
+    def test_tone_refuses_input_with_no_words(self, text):
+        # BUG-023, BUG-024
+        response = client.post("/api/tone-detect", json={"text": text})
+        assert response.status_code == 422
+        assert "nothing to analyse" in response.json()["detail"]
+
+    def test_tone_refuses_json(self):
+        # BUG-025
+        response = client.post("/api/tone-detect", json={"text": '{"a":1,"b":2}'})
+        assert response.status_code == 422
+        assert "JSON" in response.json()["detail"]
+
+    @pytest.mark.parametrize("text", ["123456789", "@#$%^&*()"])
+    def test_plagiarism_refuses_input_with_no_words(self, text):
+        # BUG-026, BUG-027: identical digit strings scored 1.0 = "100% plagiarised".
+        response = client.post(
+            "/api/plagiarism-check", json={"text": text, "reference_text": text}
+        )
+        assert response.status_code == 422
+
+    def test_plagiarism_refuses_when_only_the_reference_is_junk(self):
+        response = client.post(
+            "/api/plagiarism-check",
+            json={"text": "A genuine sentence of prose here.", "reference_text": "123456789"},
+        )
+        assert response.status_code == 422
+
+    def test_grammar_refuses_source_code(self):
+        # BUG-021: corrections would be applied to the user's code.
+        code = "def add(a, b):\n    return a + b\n"
+        response = client.post("/api/grammar-check", json={"text": code, "language": "en-US"})
+        assert response.status_code == 422
+        assert "source code" in response.json()["detail"]
+
+    def test_grammar_refuses_json(self):
+        # BUG-022
+        response = client.post(
+            "/api/grammar-check", json={"text": '{"name":"John"}', "language": "en-US"}
+        )
+        assert response.status_code == 422
+
+    def test_prose_is_still_processed_normally(self):
+        # The refusal must not catch legitimate input.
+        with patch("routers.tone.detect_tone",
+                   return_value={"tones": [{"label": "formal", "score": 0.9}], "primary_tone": "formal"}):
+            response = client.post(
+                "/api/tone-detect", json={"text": "We must act now before it is too late."}
+            )
+        assert response.status_code == 200
+        assert response.json()["primary_tone"] == "formal"
+
+    def test_paraphrase_still_only_warns_about_json(self):
+        # QA accepted the advisory here (BUG-016 Solved): the output is a
+        # transformation the user can judge, not a verdict.
+        with patch("routers.paraphrase._paraphrase", return_value=("rewritten", "standard")):
+            response = client.post("/api/paraphrase", json={"text": '{"a":1}', "intensity": 3})
+        assert response.status_code == 200
+        assert "JSON" in response.json()["advisory"]

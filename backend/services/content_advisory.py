@@ -89,6 +89,63 @@ def _is_mostly_emoji(text: str) -> bool:
     return bool(_EMOJI_RE.search(text)) and not stripped
 
 
+def classify(text: str) -> str | None:
+    """Return the input kind: 'json', 'code', 'emoji', 'no_prose', or None."""
+    if not text or not text.strip():
+        return None
+    if _looks_like_json(text):
+        return "json"
+    if _looks_like_code(text):
+        return "code"
+    if _is_mostly_emoji(text):
+        return "emoji"
+    if not _has_letters(text):
+        return "no_prose"
+    return None
+
+
+# Refusal messages. Deliberately more directive than the advisories: these are
+# returned instead of a result, so they must say what to do next.
+_REFUSALS = {
+    "json": (
+        "This looks like structured JSON data, not prose. Anovo would have to "
+        "treat it as sentences, which produces a meaningless result and can "
+        "alter your values. Paste the text you want analysed instead."
+    ),
+    "code": (
+        "This looks like source code, not prose. Anovo would suggest changes "
+        "that break it. Use a linter or formatter for code."
+    ),
+    "emoji": (
+        "This input is only emoji, so there is nothing to analyse. Add some "
+        "text and try again."
+    ),
+    "no_prose": (
+        "This input contains no words, so there is nothing to analyse. Add "
+        "some text and try again."
+    ),
+}
+
+# Input a tool cannot say anything true about.
+NO_ANALYSABLE_TEXT = ("emoji", "no_prose")
+# Input that is text, but not prose.
+STRUCTURED_INPUT = ("json", "code")
+
+
+def refusal(text: str, kinds: tuple[str, ...]) -> str | None:
+    """Message explaining why *text* cannot be processed, or None to proceed.
+
+    Used by tools whose output is a verdict (tone, plagiarism) or generated
+    content (co-writer). A confident wrong answer is worse than a clear refusal,
+    so those tools decline rather than attach a caution. Tools whose output is a
+    transformation the user can judge for themselves keep using `advise`.
+    """
+    kind = classify(text)
+    if kind in kinds:
+        return _REFUSALS[kind]
+    return None
+
+
 def advise(text: str, *, min_words: int = 0) -> str | None:
     """Return a caution message for *text*, or None when it looks like prose.
 

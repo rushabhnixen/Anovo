@@ -7,6 +7,7 @@ import sys
 import os
 from unittest.mock import patch
 from unittest.mock import MagicMock
+import pytest
 from fastapi.testclient import TestClient
 
 # Ensure the backend directory is on the path when running from backend/
@@ -306,22 +307,32 @@ class TestCoWriter:
             })
         assert response.json()["advisory"] is None
 
-    def test_cowrite_surfaces_advisory_for_json_input(self):
-        # BUG-035: JSON input produced confident invented prose with no warning.
+    def test_cowrite_refuses_json_input(self):
+        # BUG-035, QA re-test: warning while still inventing prose from
+        # {"name":"John"} was rejected. The co-writer now declines.
         with patch("routers.cowriter.generate_suggestions", return_value=(["a", "b", "c"], "standard", None)):
             response = client.post(
                 "/api/co-write",
                 json={"text": '{"name":"John","city":"Mumbai"}', "max_tokens": 50, "num_suggestions": 3},
             )
-        assert response.status_code == 200
-        assert "JSON" in response.json()["advisory"]
+        assert response.status_code == 422
+        assert "JSON" in response.json()["detail"]
 
-    def test_cowrite_truncation_advisory_wins_over_content_advisory(self):
+    @pytest.mark.parametrize("text", ["123456789", "@@@@", "😀🔥"])
+    def test_cowrite_refuses_input_with_nothing_to_work_from(self, text):
+        # BUG-040, BUG-041 and the emoji case.
+        with patch("routers.cowriter.generate_suggestions", return_value=(["a"], "standard", None)):
+            response = client.post(
+                "/api/co-write", json={"text": text, "max_tokens": 50, "num_suggestions": 1}
+            )
+        assert response.status_code == 422
+
+    def test_cowrite_truncation_advisory_still_surfaces_for_prose(self):
         with patch("routers.cowriter.generate_suggestions",
                    return_value=(["a"], "standard", "Your draft was longer than the model's context window.")):
             response = client.post(
                 "/api/co-write",
-                json={"text": '{"a":1}', "max_tokens": 50, "num_suggestions": 1},
+                json={"text": "A long prose draft about product launches.", "max_tokens": 50, "num_suggestions": 1},
             )
         assert "context window" in response.json()["advisory"]
 
