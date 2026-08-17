@@ -76,6 +76,53 @@ def _invents_figures(suggestion: str, source: str) -> bool:
     return bool(_figures(suggestion) - _figures(source))
 
 
+def _enforce_word_limit(suggestion: str, max_words: int) -> str:
+    """Trim *suggestion* to *max_words*, preferring a sentence boundary.
+
+    "Short" repeatedly produced far more than the requested length; stating the
+    limit in the prompt was not enough to hold it.
+    """
+    words = suggestion.split()
+    if len(words) <= max_words:
+        return suggestion
+
+    truncated = " ".join(words[:max_words])
+    # Prefer ending on a complete sentence, but not if that discards most of it.
+    match = re.search(r"^(.*[.!?])(?=\s|$)", truncated, flags=re.DOTALL)
+    if match and len(match.group(1).split()) >= max(3, max_words // 2):
+        return match.group(1).strip()
+    return truncated.rstrip(" ,;:—-") + "…"
+
+
+# QA re-test of BUG-045: the constraint was typed into the draft, where it is
+# ignored by design (that is what stops BUG-043's injection). Point the user at
+# the field that does honour it rather than silently doing nothing.
+_DIRECTIVE_PATTERNS = (
+    r"\bdo not\s+(?:mention|include|use|write|say|talk about|refer)\b",
+    r"\bdon'?t\s+(?:mention|include|use|write|say|talk about|refer)\b",
+    r"\bignore\s+(?:the\s+)?(?:previous|above|prior|all|earlier)\s+instructions?\b",
+    r"\bwithout\s+(?:mentioning|using|including|referring)\b",
+    r"\bavoid\s+(?:mentioning|using|including|referring)\b",
+)
+
+DIRECTIVE_ADVISORY = (
+    "Your draft looks like it contains instructions. Anovo reads the draft as "
+    "content, so directives written inside it are ignored on purpose — that is "
+    "what stops a pasted document from hijacking your request. Put them in the "
+    "Instructions field instead."
+)
+
+
+def directive_advisory(text: str, instructions: str = "") -> str | None:
+    """Nudge the user to the Instructions field when they typed directives instead."""
+    if instructions.strip():
+        return None
+    for pattern in _DIRECTIVE_PATTERNS:
+        if re.search(pattern, text, flags=re.IGNORECASE):
+            return DIRECTIVE_ADVISORY
+    return None
+
+
 TRUNCATION_ADVISORY = (
     "Your draft was longer than the model's context window, so only the last "
     "{kept:,} of {total:,} characters were used. Split it into sections for "
@@ -200,7 +247,7 @@ def _suggest_llm(
     # thing the co-writer can produce.
     grounded = [s for s in suggestions if not _invents_figures(s, text)]
     if grounded:
-        return grounded, model_used
+        return [_enforce_word_limit(s, max_tokens) for s in grounded], model_used
 
     # Everything was fabricated: retry once, stating the ban far more bluntly.
     retry_prompt = (
@@ -229,7 +276,7 @@ def _suggest_llm(
     grounded = [s for s in retried if not _invents_figures(s, text)]
     # If the model still will not comply, return the retry rather than nothing;
     # the caller's advisory is the remaining safeguard.
-    return (grounded or retried), model_used
+    return [_enforce_word_limit(s, max_tokens) for s in (grounded or retried)], model_used
 
 
 def _parse_suggestions(raw: str, source_text: str, count: int) -> list[str]:

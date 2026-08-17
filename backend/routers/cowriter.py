@@ -11,7 +11,11 @@ from services.content_advisory import (
     advise,
     refusal,
 )
-from services.cowriter_service import generate_suggestions, voice_sample_advisory
+from services.cowriter_service import (
+    directive_advisory,
+    generate_suggestions,
+    voice_sample_advisory,
+)
 
 router = APIRouter(prefix="/api", tags=["co-writer"])
 
@@ -66,6 +70,7 @@ def cowriter_endpoint(
         advisory=(
             truncation_advisory
             or advise(request.text)
+            or directive_advisory(request.text, request.instructions)
             or voice_sample_advisory(request.text, request.tone)
         ),
     )
