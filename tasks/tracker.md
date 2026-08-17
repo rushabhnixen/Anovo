@@ -2,6 +2,24 @@
 <!-- Append-only. Newest at TOP. -->
 <!-- Format: ## YYYY-MM-DD HH:MM:SS — <summary> -->
 
+## 2026-08-17 15:05:00 - QA re-test round: 9 refusals, grammar supplement, figure grounding, 1 regression fixed
+**Type:** task-complete
+**Outcome:** QA confirmed 26 of 47 solved. Caught and fixed a High-severity
+regression I had introduced: coupling language detection into the translation call
+as one JSON object made auto-detect return empty 3 of 4 times. Two QA verdicts
+reversed earlier decisions with evidence: warn-but-process was rejected for 9 bugs
+(now refusals), and level=picky was proven insufficient by querying
+api.languagetool.org directly. Diagnosed why exactly the three mobile bugs stayed
+open - the Android bundle was from Jul 16 and contained none of the work. Replaced
+prompt-hope with a deterministic figure-grounding filter for BUG-036/042. Two
+defects found only by testing production rather than unit tests: Spanish grammar
+explanations for English input, and a '["' leaking into suggestion text.
+**Files changed:** backend/services/translate_service.py, grammar_service.py,
+cowriter_service.py, content_advisory.py; backend/routers/tone.py, plagiarism.py,
+grammar.py, cowriter.py; backend/models/schemas.py; backend/tests/*;
+frontend/lib/auth-context.tsx, validation.ts; frontend/__tests__/lib/validation.test.ts;
+frontend android/ios synced bundles; PROJECT_REFERENCE.md
+
 ## 2026-08-05 21:04:12 - QA batch 2 (BUG-012..047): 35 fixed, 1 not reproducible on web
 **Type:** task-complete
 **Outcome:** Root-cause analysis again collapsed 36 reports onto about 9 causes.

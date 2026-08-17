@@ -4,6 +4,70 @@
 
 ---
 
+2026-08-17 15:05:00 - QA re-test round: refusal policy, grammar LLM supplement, figure grounding, translator regression
+
+### Context
+QA re-tested the 47-bug batch and confirmed 26 solved. This round addresses the
+code-side findings among the rest, plus one regression QA caught that I caused.
+
+### Changes
+
+**Translator auto-detect (High, my regression)**
+- The BUG-013 change asked for translation and detection as one JSON object.
+  Measured against production: auto-detect returned empty in 3 of 4 runs while
+  explicit-source translation worked 3 of 3. Detection is now a separate
+  best-effort call that cannot affect translation, and an empty model response
+  raises instead of surfacing a blank box. Detection also needed max_tokens
+  raised from 8 to 256 — GPT-OSS spent the whole budget on reasoning tokens.
+
+**Refusal policy - BUG-021, 023, 024, 025, 026, 027, 035, 040, 041**
+- QA rejected warn-but-still-process. The line they drew: a warning is fine where
+  the output is a transformation the user can judge (paraphrase and summarize were
+  both marked Solved), but not where the tool emits a verdict or invented content.
+  Tone, plagiarism, grammar-on-code and the co-writer now return 422 with an
+  actionable message. Verified live that prose still works everywhere, including
+  the short co-writer seed "Artificial intelligence".
+
+**Grammar - BUG-017, 018, 019**
+- level=picky was never going to fix these. Verified directly against
+  api.languagetool.org that the public API returns zero matches for all three QA
+  inputs at both default and picky level; those rules need premium or
+  self-hosting. LanguageTool findings are now supplemented with the existing LLM
+  checker, LanguageTool winning on overlapping spans. Best-effort: a provider
+  failure returns the LanguageTool result unchanged.
+- The LLM explanations came back in Spanish for English input, because the prompt
+  said "in the same language as the text". The language is now named explicitly.
+
+**Co-writer figure grounding - BUG-036, 042**
+- The anti-fabrication prompt rule was not enough. Suggestions are now scanned
+  for statistic-like tokens absent from the draft and dropped, with one blunt
+  retry if every option fabricates. Verified live: 3 runs of the "Startup" seed,
+  zero invented figures.
+- Fixed a suggestion leaking '["' when the model's JSON array was truncated.
+
+**BUG-007** - spaces and emoji were accepted whenever a letter and a digit were
+also present. Passwords are printable ASCII only now.
+
+**BUG-048** - signing out left the user on the current page; now redirects to /login.
+
+**Mobile - BUG-001, 003, 034**
+- The Android/iOS bundles were from Jul 16 and contained none of this work, which
+  is why these three still reproduced on the app while their web equivalents
+  passed. Re-ran `npm run mobile:sync`; a fresh APK build is still needed.
+
+### Verification
+- 194 backend tests, 100 frontend tests, flake8/ESLint/tsc clean.
+- Every fix confirmed against the live API, not just unit tests.
+
+### Not fixed
+- **BUG-004**: reset flow works; SMTP is not configured, so no email is sent.
+- **BUG-037** (short length runs long) and **BUG-045** (negative instructions):
+  both Low. 045 is likely discoverability — the Instructions field exists, but
+  QA probably typed the constraint into the draft, which is ignored by design.
+- **BUG-032**: QA now marks it Solved.
+
+---
+
 2026-08-05 21:04:12 - Fix QA batch 2 (BUG-012..047): 35 of 36 fixed, 1 not reproducible on web
 
 ### Changes
