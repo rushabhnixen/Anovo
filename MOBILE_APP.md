@@ -11,8 +11,8 @@ This avoids relying on Capacitor's development-only remote `server.url` setting 
 | App name | Anovo |
 | Android application ID | `com.soniqinfotech.anovo` |
 | iOS bundle ID | `com.soniqinfotech.anovo` |
-| Version | `1.0.1` |
-| Android version code | `2` |
+| Version | `1.0.2` |
+| Android version code | `3` |
 | Minimum Android | API 24 |
 | Android compile/target SDK | API 36 |
 | Minimum iOS | iOS 15 |
@@ -44,9 +44,32 @@ Prerequisites: Android Studio, Android SDK 36, Java 21, and a Play Console devel
 2. Open `frontend/android` in Android Studio.
 3. Test on a physical device and at least one API 24 emulator.
 4. In `android/app/build.gradle`, increment `versionCode` for every upload and update `versionName` for user-visible releases.
-5. Use **Build > Generate Signed Bundle / APK > Android App Bundle**.
+5. Use **Build > Generate Signed Bundle / APK > Android App Bundle**, or the
+   command line below.
 6. Create or select a release keystore and keep it outside this repository. Enable Play App Signing.
 7. Upload the `.aab` to an Internal testing release first, complete Play's automated checks, then promote it.
+
+### Signing from the command line
+
+Create `frontend/android/keystore.properties` (gitignored, never committed):
+
+```properties
+storeFile=C:/Users/<you>/Documents/Anovo Play Release/anovo-upload-key.jks
+storePassword=<store password>
+keyAlias=<alias>
+keyPassword=<key password>
+```
+
+Then:
+
+```bash
+cd frontend/android
+./gradlew bundleRelease
+```
+
+The signed bundle is written to `app/build/outputs/bundle/release/app-release.aab`.
+Without `keystore.properties` the build still succeeds but the bundle is
+unsigned, which Play will reject — sign it before uploading.
 
 Never commit `.jks`, `.keystore`, passwords, or `local.properties`.
 
