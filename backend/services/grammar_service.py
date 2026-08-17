@@ -73,12 +73,42 @@ def is_language_supported(language: str) -> bool:
     return base_language(language) in LT_SUPPORTED_LANGUAGES
 
 
+def _overlaps(a: GrammarError, b: GrammarError) -> bool:
+    return a.offset < b.offset + b.length and b.offset < a.offset + a.length
+
+
 def check_grammar(text: str, language: str = DEFAULT_LANGUAGE) -> list[GrammarError]:
-    """Return grammar errors for *text*, choosing an engine by language."""
+    """Return grammar errors for *text*, choosing an engine by language.
+
+    For languages LanguageTool supports, its findings are supplemented with an
+    LLM pass. Verified against the public API: it returns zero matches for
+    "I have gone to the market yesterday." (tense), "Hello how are you"
+    (punctuation) and "Although he was tired but he continued working."
+    (conjunction) at both default and picky levels — those rules need the
+    premium or self-hosted instance. The LLM catches them.
+
+    The LLM pass is best-effort and additive: if it fails, LanguageTool's result
+    is still returned unchanged.
+    """
     resolved = resolve_language(text, language)
     if not is_language_supported(resolved):
         return _check_llm(text, resolved)
-    return _check_languagetool(text, resolved)
+
+    errors = _check_languagetool(text, resolved)
+
+    try:
+        extra = _check_llm(text, resolved)
+    except Exception:
+        # Never let the supplementary pass break a working check.
+        return errors
+
+    # LanguageTool wins on overlap: its offsets are exact and its rule ids are
+    # meaningful to the UI.
+    for candidate in extra:
+        if not any(_overlaps(candidate, existing) for existing in errors):
+            errors.append(candidate)
+
+    return sorted(errors, key=lambda e: e.offset)
 
 
 def _check_languagetool(text: str, language: str) -> list[GrammarError]:

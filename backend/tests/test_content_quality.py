@@ -305,3 +305,83 @@ class TestRefusalPolicy:
             response = client.post("/api/paraphrase", json={"text": '{"a":1}', "intensity": 3})
         assert response.status_code == 200
         assert "JSON" in response.json()["advisory"]
+
+
+# ── QA re-test: grammar findings supplemented by the LLM (017, 018, 019) ──────
+
+class TestGrammarSupplementaryPass:
+    """The public LanguageTool API returns zero matches for these three inputs at
+    both default and picky level (verified directly against the API), so an LLM
+    pass is layered on top."""
+
+    def _lt_response(self, matches):
+        response = MagicMock()
+        response.json.return_value = {"matches": matches}
+        return response
+
+    def test_llm_findings_supplement_languagetool(self):
+        from models.schemas import GrammarError
+        from services import grammar_service
+
+        llm_error = GrammarError(
+            message="Past tense is required with 'yesterday'.",
+            offset=2, length=12, replacements=["went"],
+            rule_id="LLM_GRAMMAR", category="GRAMMAR",
+        )
+        with patch("services.grammar_service.httpx.post", return_value=self._lt_response([])), \
+             patch("services.grammar_service._check_llm", return_value=[llm_error]):
+            errors = grammar_service.check_grammar("I have gone to the market yesterday.", "en-US")
+
+        assert len(errors) == 1
+        assert errors[0].rule_id == "LLM_GRAMMAR"
+
+    def test_languagetool_wins_on_overlapping_spans(self):
+        from models.schemas import GrammarError
+        from services import grammar_service
+
+        lt_match = {
+            "message": "Agreement error", "offset": 5, "length": 3,
+            "replacements": [{"value": "is"}],
+            "rule": {"id": "AGREEMENT", "category": {"id": "GRAMMAR"}},
+        }
+        overlapping = GrammarError(
+            message="duplicate", offset=6, length=2, replacements=["is"],
+            rule_id="LLM_GRAMMAR", category="GRAMMAR",
+        )
+        with patch("services.grammar_service.httpx.post", return_value=self._lt_response([lt_match])), \
+             patch("services.grammar_service._check_llm", return_value=[overlapping]):
+            errors = grammar_service.check_grammar("This are wrong.", "en-US")
+
+        assert [e.rule_id for e in errors] == ["AGREEMENT"]
+
+    def test_llm_failure_does_not_break_the_check(self):
+        from services import grammar_service
+
+        lt_match = {
+            "message": "Agreement error", "offset": 5, "length": 3,
+            "replacements": [{"value": "is"}],
+            "rule": {"id": "AGREEMENT", "category": {"id": "GRAMMAR"}},
+        }
+        with patch("services.grammar_service.httpx.post", return_value=self._lt_response([lt_match])), \
+             patch("services.grammar_service._check_llm", side_effect=RuntimeError("provider down")):
+            errors = grammar_service.check_grammar("This are wrong.", "en-US")
+
+        assert [e.rule_id for e in errors] == ["AGREEMENT"]
+
+    def test_results_are_ordered_by_position(self):
+        from models.schemas import GrammarError
+        from services import grammar_service
+
+        lt_match = {
+            "message": "late error", "offset": 30, "length": 3,
+            "replacements": [], "rule": {"id": "LT", "category": {"id": "GRAMMAR"}},
+        }
+        early = GrammarError(
+            message="early", offset=2, length=4, replacements=[],
+            rule_id="LLM_GRAMMAR", category="GRAMMAR",
+        )
+        with patch("services.grammar_service.httpx.post", return_value=self._lt_response([lt_match])), \
+             patch("services.grammar_service._check_llm", return_value=[early]):
+            errors = grammar_service.check_grammar("x" * 40, "en-US")
+
+        assert [e.offset for e in errors] == [2, 30]
