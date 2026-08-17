@@ -158,6 +158,11 @@ def _check_llm(text: str, language: str) -> list[GrammarError]:
     reliably and a wrong offset would highlight the wrong words.
     """
     from services.llm_client import llm_chat
+    from services.translate_service import LANG_NAMES
+
+    # "in the same language as the text" was applied unreliably — English input
+    # came back with Spanish explanations. Name the language explicitly.
+    language_name = LANG_NAMES.get(base_language(language), "English")
 
     try:
         raw = llm_chat(
@@ -166,7 +171,7 @@ def _check_llm(text: str, language: str) -> list[GrammarError]:
                 "agreement, tense and punctuation mistakes in the user's text.\n"
                 "Reply with ONLY a JSON array. Each element must be an object with:\n"
                 '  "fragment"   - the exact substring from the text that is wrong, copied verbatim\n'
-                '  "message"    - a short explanation, written in the same language as the text\n'
+                f'  "message"    - a short explanation, written in {language_name}\n'
                 '  "correction" - the corrected replacement for that fragment\n'
                 "Report every real mistake and nothing else. If the text is correct, reply [].\n"
                 "Do not translate the text. Do not add commentary or markdown."

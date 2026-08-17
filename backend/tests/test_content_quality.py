@@ -385,3 +385,16 @@ class TestGrammarSupplementaryPass:
             errors = grammar_service.check_grammar("x" * 40, "en-US")
 
         assert [e.offset for e in errors] == [2, 30]
+
+    def test_explanation_language_is_named_explicitly(self):
+        # Live output had Spanish explanations for English text because the prompt
+        # said "the same language as the text".
+        from services import grammar_service
+
+        with patch("services.llm_client.llm_chat", return_value="[]") as mock:
+            grammar_service._check_llm("I have gone to the market yesterday.", "en-US")
+        assert "written in English" in mock.call_args.kwargs["system_prompt"]
+
+        with patch("services.llm_client.llm_chat", return_value="[]") as mock:
+            grammar_service._check_llm("मुझे किताब पढ़ना पसंद हैं।", "hi")
+        assert "written in Hindi" in mock.call_args.kwargs["system_prompt"]
