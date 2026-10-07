@@ -47,12 +47,38 @@ export default function Navbar() {
     setMenuOpen(false);
   }, [pathname]);
 
+  // The native app shell (Home toolbar button) navigates without unmounting
+  // this component, and same-route taps don't change the pathname — so neither
+  // path above closes the menu. MobileRuntime broadcasts this event instead.
+  useEffect(() => {
+    const close = () => setMenuOpen(false);
+    window.addEventListener("anovo:close-menu", close);
+    return () => window.removeEventListener("anovo:close-menu", close);
+  }, []);
+
+  // Scrolling the page (or tapping Home, which returns to top) means the menu
+  // is no longer wanted. Scrolls inside the panel itself are ignored so its
+  // own 80vh overflow list stays usable.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onScrollAway = (event: Event) => {
+      if (event.target instanceof Element && event.target.closest("[data-mobile-menu]")) return;
+      setMenuOpen(false);
+    };
+    window.addEventListener("touchmove", onScrollAway, { passive: true });
+    window.addEventListener("scroll", onScrollAway, { passive: true });
+    return () => {
+      window.removeEventListener("touchmove", onScrollAway);
+      window.removeEventListener("scroll", onScrollAway);
+    };
+  }, [menuOpen]);
+
   return (
     <>
       <nav className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90">
         <div className="mx-auto flex h-14 max-w-[1440px] items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-4">
-            <Link href="/" className="group flex items-center gap-2">
+            <Link href="/" onClick={() => setMenuOpen(false)} className="group flex items-center gap-2">
               <Image
                 src="/icon-192.png"
                 alt="Anovo"
@@ -166,7 +192,7 @@ export default function Navbar() {
         </div>
 
         {menuOpen ? (
-          <div className="max-h-[80vh] overflow-y-auto border-t border-slate-200 px-4 py-3 md:hidden dark:border-slate-800">
+          <div data-mobile-menu className="max-h-[80vh] overflow-y-auto border-t border-slate-200 px-4 py-3 md:hidden dark:border-slate-800">
             <Link
               href="/"
               onClick={() => setMenuOpen(false)}

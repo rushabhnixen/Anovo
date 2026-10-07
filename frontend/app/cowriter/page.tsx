@@ -26,7 +26,7 @@ const TONES = [
 ] as const;
 
 const LENGTHS = {
-  short: { label: "Short", tokens: 45 },
+  short: { label: "Short", tokens: 20 },
   medium: { label: "Paragraph", tokens: 90 },
   long: { label: "Detailed", tokens: 160 },
 } as const;
@@ -88,6 +88,11 @@ export default function CoWriterPage() {
       setModelUsed(response.model_used);
       setAdvisory(response.advisory ?? null);
     } catch (caught) {
+      // Clear stale output: the backend correctly refuses numeric-only and
+      // special-character-only input (422), but without this the previous
+      // successful result stays visible in the output block (BUG-040/041).
+      setSuggestions([]);
+      setModelUsed("");
       setError((caught as Error).message);
     } finally {
       setLoading(false);

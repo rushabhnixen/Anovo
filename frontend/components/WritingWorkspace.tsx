@@ -371,6 +371,12 @@ export default function WritingWorkspace({ initialTool = "paraphrase" }: Writing
       setResultMeta(primary.meta ?? "");
       setAdvisory(primary.advisory ?? null);
     } catch (caught) {
+      // Clear stale output: refused input (e.g. emoji-only or JSON tone
+      // checks, 422) must not leave the previous result visible in the
+      // output block (BUG-024/025).
+      setOutput("");
+      setCompareOutput("");
+      setResultMeta("");
       setError((caught as Error).message);
     } finally {
       setLoading(false);

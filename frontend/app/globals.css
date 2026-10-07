@@ -54,16 +54,16 @@ textarea:focus-visible {
   display: none;
 }
 
-body.native-app > div,
-body.native-app main {
+html.native-app > body > div,
+html.native-app main {
   overscroll-behavior-y: contain;
 }
 
-body.native-app nav:first-of-type {
+html.native-app body > nav:first-of-type {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
-body.native-app main {
+html.native-app main {
   padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
 }
 

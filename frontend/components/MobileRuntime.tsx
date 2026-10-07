@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { App as CapacitorApp } from "@capacitor/app";
@@ -55,19 +55,34 @@ async function applyStatusBarTheme() {
   ]);
 }
 
+// Effects run after the browser paints, so anything that changes layout here
+// (toolbar mount, body padding) visibly jumps content on every boot/reload —
+// seen as sections like the Intensity slider flashing. Layout work runs in a
+// layout effect instead, which fires before paint. The server-safe alias keeps
+// prerender output identical (no hydration mismatch).
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 export default function MobileRuntime() {
   const router = useRouter();
   const pathname = usePathname();
   const [isNative, setIsNative] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
 
+  // Show the native shell (toolbar + safe-area padding) in the first painted
+  // frame instead of popping it in one frame late.
+  useIsomorphicLayoutEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    setIsNative(true);
+    document.documentElement.classList.add("native-app");
+  }, []);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     let active = true;
     const listenerHandles: PluginListenerHandle[] = [];
-    setIsNative(true);
-    document.body.classList.add("native-app");
+    document.documentElement.classList.add("native-app");
 
     const register = async (listener: Promise<PluginListenerHandle>) => {
       const handle = await listener;
@@ -120,7 +135,7 @@ export default function MobileRuntime() {
     return () => {
       active = false;
       themeObserver.disconnect();
-      document.body.classList.remove("native-app");
+      document.documentElement.classList.remove("native-app");
       for (const handle of listenerHandles) void handle.remove();
     };
   }, [router]);
@@ -131,11 +146,18 @@ export default function MobileRuntime() {
 
   const goHome = () => {
     void tap();
+    // Navbar listens for this: same-route taps don't change the pathname, so
+    // without it the open mobile menu would stay open.
+    window.dispatchEvent(new CustomEvent("anovo:close-menu"));
     router.push("/");
   };
 
   const reload = () => {
     void tap();
+    // Drop the stuck press highlight first: the WebView can keep painting the
+    // :active state while the reload is in flight, leaving all three buttons
+    // looking washed out/transparent.
+    (document.activeElement as HTMLElement | null)?.blur?.();
     window.location.reload();
   };
 

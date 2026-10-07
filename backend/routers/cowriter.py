@@ -14,6 +14,7 @@ from services.content_advisory import (
 from services.cowriter_service import (
     directive_advisory,
     generate_suggestions,
+    thin_expand_advisory,
     voice_sample_advisory,
 )
 
@@ -69,6 +70,7 @@ def cowriter_endpoint(
         # "Artificial intelligence" is exactly what the co-writer is for.
         advisory=(
             truncation_advisory
+            or thin_expand_advisory(request.text, request.action)
             or advise(request.text)
             or directive_advisory(request.text, request.instructions)
             or voice_sample_advisory(request.text, request.tone)

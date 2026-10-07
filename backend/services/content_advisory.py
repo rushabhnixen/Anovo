@@ -108,9 +108,8 @@ def classify(text: str) -> str | None:
 # returned instead of a result, so they must say what to do next.
 _REFUSALS = {
     "json": (
-        "This looks like structured JSON data, not prose. Anovo would have to "
-        "treat it as sentences, which produces a meaningless result and can "
-        "alter your values. Paste the text you want analysed instead."
+        "This looks like JSON data, not prose. Paste the text you want "
+        "analysed instead."
     ),
     "code": (
         "This looks like source code, not prose. Anovo would suggest changes "
